@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title> Path of Pages </title>
+<style>
+html,body { height:100%; margin:0; background:#111; display:flex; align-items:center; justify-content:center; font-family:Segoe UI, Arial, sans-serif; color:#fff; }
+#game-wrap { width:960px; max-width:96vw; aspect-ratio:16/9; background:#000; position:relative; image-rendering:pixelated; box-shadow:0 10px 30px rgba(0,0,0,.7); }
+canvas { width:100%; height:100%; display:block; image-rendering:pixelated; cursor:none; }
+.hud { position:absolute; left:8px; top:8px; z-index:5; font-weight:700; letter-spacing:0.5px; }
+.hud .line { margin-bottom:6px; padding:6px 10px; background:rgba(0,0,0,0.45); border-radius:6px; display:inline-block; }
+.center-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:6; pointer-events:none; }
+.center-msg .box { pointer-events:auto; padding:18px 22px; background:rgba(0,0,0,0.7); border-radius:8px; text-align:center; }
+button { margin-top:10px; padding:8px 12px; border-radius:6px; border:0; background:#ffcc00; font-weight:700; cursor:pointer; }
+.center-msg .box button { margin: 8px; }
+.controls { position:absolute; right:8px; top:8px; z-index:5; background:rgba(0,0,0,0.35); padding:8px;border-radius:8px; font-size:13px; }
+.touch-controls { position:absolute; bottom:12px; left:12px; z-index:7; display:none; gap:8px; }
+.touch-controls button { opacity:.9; font-weight:700; padding:12px; border-radius:8px; }
+@media (pointer: coarse) { .touch-controls{ display:flex; } }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <div class="line" id="levelTxt">Nível: 1 / 10</div>
+  </div>
+  <div class="controls">
+    WASD / ←→ — mover · Espaço / W — pular · R — reiniciar · Esc — pausar
+  </div>
+  <div class="touch-controls">
+    <button id="leftBtn">◀</button>
+    <button id="jumpBtn">▲</button>
+    <button id="rightBtn">▶</button>
+  </div>
+
+  <div class="center-msg" id="centerMsg">
+    <div class="box" id="centerBox">
+      <div style="font-size:20px; margin-bottom:6px"> Path of Pages </div>
+      <div style="opacity:.8; font-size:13px">Pegue todos os livros. Evite espinhos. 10 níveis.</div>
+      <button id="startBtn">Jogar</button>
+    </div>
+  </div>
+
+  <div class="center-msg" id="pauseMenu" style="display:none;">
+    <div class="box" id="pauseBox">
+      <div style="font-size:20px; margin-bottom:12px">Jogo Pausado</div>
+      <button id="continueGameBtn" style="margin-bottom:8px;">Continuar</button>
+      <button id="toStartBtn">Tela Inicial</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const GAME_W = 800, GAME_H = 400;
+canvas.width = GAME_W;
+canvas.height = GAME_H;
+let keys = {}, game;
+let paused = false;
+
+window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+const BOOK_HEIGHT_ABOVE_PLATFORM = 20;
+
+function generateLongLevels(difficulty) {
+    const generatedLevels = [];
+    const numLevels = 10;
+    
+    let platformsPerLevel, platformWidth, spikeChance, horizontalGapBetweenPlatforms, verticalChangeRange;
+    const platformHeight = 15;
+    const spikeWidth = 40;
+    const spikeHeight = 10;
+
+    if (difficulty === 'easy') {
+        platformsPerLevel = 20; 
+        platformWidth = 180;    
+        spikeChance = 0.2;      
+        horizontalGapBetweenPlatforms = { base: 60, range: 40 };
+        verticalChangeRange = 60; 
+    } else { // 'hard'
+        platformsPerLevel = 60; 
+        platformWidth = 120;    
+        spikeChance = 1.0;      
+        horizontalGapBetweenPlatforms = { base: 10, range: 50 };
+        verticalChangeRange = 80; 
+    }
+
+    for (let i = 0; i < numLevels; i++) {
+        const level = { platforms: [], spikes: [], books: [], trap: {} };
+        let lastPlatform = { x: 0, y: 350, w: platformWidth, h: platformHeight };
+        level.platforms.push(lastPlatform);
+
+        for (let j = 1; j < platformsPerLevel; j++) {
+            const currentGap = horizontalGapBetweenPlatforms.base + Math.random() * horizontalGapBetweenPlatforms.range;
+            let newX = lastPlatform.x + lastPlatform.w + currentGap;
+            
+            const verticalChange = (Math.random() - 0.5) * verticalChangeRange;
+            let newY = lastPlatform.y + verticalChange;
+
+            if (newY > 380) newY = 380;
+            if (newY < 150) newY = 150;
+
+            const newPlatform = { x: newX, y: newY, w: platformWidth, h: platformHeight };
+            level.platforms.push(newPlatform);
+
+            const isFinalPlatform = (j === platformsPerLevel - 1);
+
+            if (Math.random() < spikeChance && !isFinalPlatform) { 
+                let spikeXOffset;
+                if (difficulty === 'easy') {
+                    spikeXOffset = (platformWidth / 2) - (spikeWidth / 2);
+                } else {
+                    spikeXOffset = 20 + Math.random() * (platformWidth - spikeWidth - 40);
+                }
+                const newSpike = { x: newPlatform.x + spikeXOffset, y: newPlatform.y - spikeHeight, w: spikeWidth };
+                level.spikes.push(newSpike);
+            }
+            
+            lastPlatform = newPlatform;
+        }
+
+        const finalPlatform = level.platforms[level.platforms.length - 1];
+        level.books.push({ x: finalPlatform.x + (platformWidth/2 - 10), y: finalPlatform.y - BOOK_HEIGHT_ABOVE_PLATFORM });
+        level.trap = { x: finalPlatform.x - 30, y: finalPlatform.y - 15, width: 60, active: true };
+        generatedLevels.push(level);
+    }
+    return generatedLevels;
+}
+
+let LEVELS = [];
+let particles = [];
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y; this.color = color;
+    this.vx = (Math.random() - 0.5) * 5;
+    this.vy = (Math.random() - 1) * 5;
+    this.size = Math.random() * 5 + 2;
+    this.life = 60;
+  }
+  update() { this.x += this.vx; this.y += this.vy; this.vy += 0.2; this.life--; }
+  draw(ctx) { ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size); }
+}
+
+class Cloud {
+    constructor(x, y, size, speed) { this.x = x; this.y = y; this.size = size; this.speed = speed; }
+    update() {
+        this.x -= this.speed;
+        if (this.x + this.size < 0) {
+            this.x = GAME_W + Math.random() * GAME_W;
+            this.y = Math.random() * (GAME_H / 2);
+            this.speed = 0.2 + Math.random() * 0.5;
+            this.size = Math.random() * 10 + 20;
+        }
+    }
+    draw(ctx) {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(this.x, this.y + this.size * 0.5, this.size, this.size * 0.5);
+        ctx.fillRect(this.x + this.size * 0.2, this.y + this.size * 0.2, this.size * 0.6, this.size * 0.8);
+        ctx.fillRect(this.x + this.size * 0.1, this.y + this.size * 0.3, this.size * 0.8, this.size * 0.7);
+    }
+}
+
+class Game {
+  constructor() {
+    this.levelIndex=1; this.maxLevels=10; this.running=false; this.playerDead = false;
+    this.clouds = []; this.initClouds();
+  }
+  initClouds() {
+      for (let i = 0; i < 5; i++) {
+          this.clouds.push(new Cloud(Math.random() * GAME_W * 2, Math.random() * (GAME_H / 2), Math.random() * 10 + 20, 0.2 + Math.random() * 0.5));
+      }
+  }
+  start() {
+    this.level = new Level(this.levelIndex);
+    this.player = new Player(50,this.level.groundY-80);
+    this.running=true; this.playerDead = false; particles = [];
+    this.loop();
+  }
+  restartLevel() {
+    this.level = new Level(this.levelIndex);
+    this.player = new Player(50, this.level.groundY - 80);
+    this.running = true; this.playerDead = false; particles = [];
+    this.loop();
+  }
+  nextLevel() {
+    this.levelIndex++;
+    if(this.levelIndex > this.maxLevels){
+      showCenterMsg("🎉 Parabéns! Você completou todas as fases!", [ 
+          { text: "Jogar Novamente", callback: () => location.reload() },
+          { text: "Tela Inicial", callback: () => location.reload() } // Adicionado
+      ]);
+      return;
+    }
+    this.level = new Level(this.levelIndex);
+    this.player = new Player(50,this.level.groundY-80);
+    this.playerDead = false; particles = [];
+  }
+  loop() {
+    if(!this.running && particles.length === 0) return;
+    if(!paused) { this.update(); this.draw(); }
+    requestAnimationFrame(()=>this.loop());
+  }
+  update() {
+    if(keys["r"]){
+        if(this.playerDead) { game.restartLevel(); } 
+        else if (!paused) { 
+            paused = true;
+            showCenterMsg("Reiniciar Nível?", [
+                { text: "Sim", callback: () => { paused = false; game.restartLevel(); }},
+                { text: "Não", callback: () => { paused = false; }}
+            ]);
+        }
+        keys["r"] = false;
+    }
+    if(!this.playerDead) { this.player.update(this.level); } 
+    else {
+        for(let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            if(particles[i].life <= 0) particles.splice(i, 1);
+        }
+        if(particles.length === 0) {
+            this.running = false;
+            
+            // =========================================================================
+            // MODIFICAÇÃO AQUI (Pegadinha)
+            // =========================================================================
+            // Verifica se a morte foi no último nível (a pegadinha)
+            if (this.levelIndex === this.maxLevels) {
+                // Mostra a mensagem de vitória em vez de morte
+                showCenterMsg("🎉 Parabéns! Você completou todas as fases!", [
+                    { text: "Jogar Novamente", callback: () => location.reload() },
+                    { text: "Tela Inicial", callback: () => location.reload() }
+                ]);
+            } else {
+                // Mensagem de morte normal
+                showCenterMsg("Você Morreu.", [
+                    { text: "Tentar Novamente", callback: () => game.restartLevel() },
+                    { text: "Voltar à Tela Inicial", callback: () => location.reload() }
+                ]);
+            }
+            // =========================================================================
+            // FIM DA MODIFICAÇÃO
+            // =========================================================================
+        }
+    }
+    this.clouds.forEach(cloud => cloud.update());
+    this.camera={x:Math.max(0,this.player.x-150)};
+    document.getElementById("levelTxt").textContent = `Nível: ${this.levelIndex} / 10`;
+    
+    // Esta condição não será mais atingida no nível 10 por causa da modificação no Player.update
+    if(this.level.books.every(b=>b.collected)) {
+      this.running = false;
+      showCenterMsg("Livro Coletado!", [
+        { text: "Continuar", callback: () => {
+          this.nextLevel();
+          if (this.levelIndex <= this.maxLevels) { this.running = true; this.loop(); }
+        }}
+      ]);
+    }
+  }
+  drawSun(ctx) {
+      const sunX = GAME_W - 100, sunY = 70, sunSize = 50, raySize = sunSize / 5;
+      ctx.fillStyle = "#FFD700";
+      ctx.fillRect(sunX, sunY, sunSize, sunSize);
+      ctx.fillRect(sunX - raySize, sunY + sunSize / 2 - raySize / 2, raySize, raySize);
+      ctx.fillRect(sunX + sunSize, sunY + sunSize / 2 - raySize / 2, raySize, raySize);
+      ctx.fillRect(sunX + sunSize / 2 - raySize / 2, sunY - raySize, raySize, raySize);
+      ctx.fillRect(sunX + sunSize / 2 - raySize / 2, sunY + sunSize, raySize, raySize);
+      ctx.fillRect(sunX - raySize / 2, sunY - raySize / 2, raySize, raySize);
+      ctx.fillRect(sunX + sunSize - raySize / 2, sunY - raySize / 2, raySize, raySize);
+      ctx.fillRect(sunX - raySize / 2, sunY + sunSize - raySize / 2, raySize, raySize);
+      ctx.fillRect(sunX + sunSize - raySize / 2, sunY + sunSize - raySize / 2, raySize, raySize);
+  }
+  draw() {
+    ctx.clearRect(0,0,GAME_W,GAME_H);
+    ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, GAME_W, GAME_H); 
+    this.drawSun(ctx);
+    this.clouds.forEach(cloud => cloud.draw(ctx));
+    ctx.save();
+    ctx.translate(-this.camera.x, 0);
+    for(let p of this.level.platforms)p.draw(ctx);
+    for(let s of this.level.spikes)s.draw(ctx);
+    for(let b of this.level.books)b.draw(ctx);
+    if(!this.playerDead) { this.player.draw(ctx); }
+    for(let p of particles) { p.draw(ctx); }
+    ctx.restore();
+  }
+}
+
+class Level {
+  constructor(index){
+    this.index=index; const data=LEVELS[index-1];
+    this.platforms=data.platforms.map(p=>new Platform(p.x,p.y,p.w,p.h));
+    this.spikes=data.spikes.map(s=>new Spike(s.x,s.y,s.w));
+    this.books=data.books.map(b=>new Book(b.x,b.y));
+    this.trap={...data.trap}; this.groundY=400-50;
+  }
+}
+
+class Platform{constructor(x,y,w,h){this.x=x;this.y=y;this.w=w;this.h=h;}draw(ctx){ctx.fillStyle="#654321";ctx.fillRect(this.x,this.y,this.w,this.h);}}
+class Spike{constructor(x,y,w){this.x=x;this.y=y;this.w=w;}draw(ctx){
+  const x=this.x, y=this.y;
+  ctx.fillStyle="#ff3333"; ctx.beginPath();
+  ctx.moveTo(x,y+10); ctx.lineTo(x+this.w/2,y); ctx.lineTo(x+this.w,y+10);
+  ctx.closePath(); ctx.fill();
+}}
+
+class Player{
+  constructor(x,y){this.x=x;this.y=y;this.vx=0;this.vy=0;this.width=25;this.height=40;this.onGround=false;}
+  die() {
+    if (game.playerDead) return;
+    game.playerDead = true;
+    const colors = ["#ffdb58", "#f2d2b6", "#333", "#ff3333"];
+    for (let i = 0; i < 20; i++) {
+      particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, colors[Math.floor(Math.random() * colors.length)]));
+    }
+  }
+  update(level){
+    this.vy+=0.8; this.x+=this.vx; this.y+=this.vy; this.vx*=0.85;
+    if(keys["a"] || keys["arrowleft"])this.vx=-3; if(keys["d"] || keys["arrowright"])this.vx=3;
+    if((keys["w"]||keys[" "] || keys["arrowup"])&&this.onGround){this.vy=-17; this.onGround=false;}
+    this.onGround=false;
+    for(let p of level.platforms){
+      if(this.vy>=0 && this.x+this.width>p.x && this.x<p.x+p.w && this.y+this.height>p.y && this.y+this.height-this.vy<=p.y){
+        this.y=p.y-this.height; this.vy=0; this.onGround=true;
+      }
+    }
+    if(level.trap.active && this.x+this.width>level.trap.x && this.x<level.trap.x+level.trap.width && this.y+this.height>=level.trap.y){
+      level.trap.active=false; this.vy=10;
+    }
+    for(let s of level.spikes){
+      const px=this.x+this.width/2, py=this.y+this.height;
+      if(px>s.x && px<s.x+s.w && py>s.y && py<s.y+10){ this.die(); return; }
+      if(this.y+this.height > s.y && this.y < s.y+10 && this.x+this.width > s.x && this.x < s.x+s.w){ this.die(); return; }
+    }
+    
+    // =========================================================================
+    // MODIFICAÇÃO AQUI (Pegadinha)
+    // =========================================================================
+    for(let b of level.books) {
+        if(!b.collected && this.x+this.width>b.x && this.x<b.x+20 && this.y+this.height>b.y && this.y<b.y+20) {
+            // Verifica se é o último nível
+            if (game.levelIndex === game.maxLevels) {
+                this.die(); // Morre em vez de coletar
+                return; // Para a atualização do jogador
+            } else {
+                b.collected = true; // Coleta normal
+            }
+        }
+    }
+    // =========================================================================
+    // FIM DA MODIFICAÇÃO
+    // =========================================================================
+
+    if(this.y>GAME_H+100) { this.die(); }
+  }
+  draw(ctx){
+    const x=this.x,y=this.y;
+    ctx.fillStyle="#ffdb58"; ctx.fillRect(x,y+10,25,30);
+    ctx.fillStyle="#f2d2b6"; ctx.fillRect(x+5,y,15,15);
+    ctx.fillStyle="#333"; 
+    ctx.fillRect(x+3,y+35,6,5);
+    ctx.fillRect(x+16,y+35,6,5);
+  }
+}
+
+class Book{constructor(x,y){this.x=x;this.y=y;this.collected=false;}draw(ctx){if(!this.collected){ctx.fillStyle="#00ffcc";ctx.fillRect(this.x,this.y,20,20);}}}
+
+const leftBtn = document.getElementById('leftBtn'), rightBtn = document.getElementById('rightBtn'), jumpBtn = document.getElementById('jumpBtn');
+leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['a'] = true; });
+leftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys['a'] = false; });
+rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['d'] = true; });
+rightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys['d'] = false; });
+jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[' '] = true; });
+jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys[' '] = false; });
+
+function togglePause() {
+  if(!game || !game.running) return;
+  paused = !paused;
+  document.getElementById("pauseMenu").style.display = paused ? "flex" : "none";
+}
+window.addEventListener("keydown", e => { if(e.key === "Escape") togglePause(); });
+document.getElementById("continueGameBtn").addEventListener("click", () => { paused = false; document.getElementById("pauseMenu").style.display = "none"; });
+document.getElementById("toStartBtn").addEventListener("click", () => { location.reload(); });
+
+function showCenterMsg(title, buttons) {
+  const centerMsg = document.getElementById("centerMsg");
+  const centerBox = document.getElementById("centerBox");
+  centerMsg.style.display = "flex";
+  let buttonsHTML = '';
+  buttons.forEach((button, index) => { buttonsHTML += `<button id="msgBtn_${index}">${button.text}</button>`; });
+  centerBox.innerHTML = `<div style="font-size:18px;margin-bottom:12px;">${title}</div><div>${buttonsHTML}</div>`;
+  buttons.forEach((button, index) => {
+    document.getElementById(`msgBtn_${index}`).addEventListener("click", () => {
+      centerMsg.style.display = "none"; button.callback();
+    });
+  });
+}
+
+function showDifficultyMenu() {
+    const centerBox = document.getElementById("centerBox");
+    centerBox.innerHTML = `
+        <div style="font-size:18px;margin-bottom:12px;">Escolha a Dificuldade</div>
+        <button id="easyBtn" style="margin: 8px;">Fácil</button>
+        <button id="hardBtn" style="margin: 8px;">Difícil</button>
+        <div style="opacity:.8; font-size:13px; max-width: 400px; margin-top: 15px; text-align: left; line-height: 1.5;">
+            <strong>Fácil:</strong> Níveis mais curtos, plataformas mais largas e menos espinhos.
+            <br><br>
+            <strong>Difícil:</strong> O desafio original. Níveis longos com um espinho por plataforma.
+        </div>
+    `;
+
+    setTimeout(() => {
+        document.getElementById("easyBtn").addEventListener("click", () => {
+            LEVELS = generateLongLevels('easy');
+            document.getElementById("centerMsg").style.display = "none";
+            game = new Game();
+            game.start();
+        });
+        document.getElementById("hardBtn").addEventListener("click", () => {
+            LEVELS = generateLongLevels('hard');
+            document.getElementById("centerMsg").style.display = "none";
+            game = new Game();
+            game.start();
+        });
+    }, 50);
+}
+
+function showIntro() {
+  const centerBox=document.getElementById("centerBox");
+  const introText=`Você é <strong>Elian</strong>, um aprendiz de bibliotecário que deve recuperar <strong>as páginas mágicas</strong> perdidas.<br><br>
+Evite armadilhas e colete todos os livros para completar as 10 fases!`;
+  centerBox.innerHTML=`<div style="font-size:18px;margin-bottom:12px;">As Páginas Perdidas</div>
+  <div style="opacity:.85;font-size:13px;line-height:1.5;max-width:480px;text-align:left;">${introText}</div>
+  <button id="continueBtn" style="margin-top:16px;">Continuar</button>`;
+  
+  setTimeout(()=>{
+      document.getElementById("continueBtn").addEventListener("click",()=>{
+        showDifficultyMenu();
+      })
+  },50);
+}
+
+const startButton = document.getElementById("startBtn");
+startButton.addEventListener("click", showIntro);
+
+</script>
+</body>
+</html>
