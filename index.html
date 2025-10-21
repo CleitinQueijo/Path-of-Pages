@@ -8,13 +8,15 @@
 html,body { height:100%; margin:0; background:#111; display:flex; align-items:center; justify-content:center; font-family:Segoe UI, Arial, sans-serif; color:#fff; }
 #game-wrap { width:960px; max-width:96vw; aspect-ratio:16/9; background:#000; position:relative; image-rendering:pixelated; box-shadow:0 10px 30px rgba(0,0,0,.7); }
 canvas { width:100%; height:100%; display:block; image-rendering:pixelated; cursor:none; }
-.hud { position:absolute; left:8px; top:8px; z-index:5; font-weight:700; letter-spacing:0.5px; }
+/* MODIFICAÇÃO: Ocultado HUD por padrão */
+.hud { position:absolute; left:8px; top:8px; z-index:5; font-weight:700; letter-spacing:0.5px; display: none; }
 .hud .line { margin-bottom:6px; padding:6px 10px; background:rgba(0,0,0,0.45); border-radius:6px; display:inline-block; }
 .center-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:6; pointer-events:none; }
 .center-msg .box { pointer-events:auto; padding:18px 22px; background:rgba(0,0,0,0.7); border-radius:8px; text-align:center; }
 button { margin-top:10px; padding:8px 12px; border-radius:6px; border:0; background:#ffcc00; font-weight:700; cursor:pointer; }
 .center-msg .box button { margin: 8px; }
-.controls { position:absolute; right:8px; top:8px; z-index:5; background:rgba(0,0,0,0.35); padding:8px;border-radius:8px; font-size:13px; }
+/* MODIFICAÇÃO: Ocultados os controles permanentemente da tela de jogo */
+.controls { position:absolute; right:8px; top:8px; z-index:5; background:rgba(0,0,0,0.35); padding:8px;border-radius:8px; font-size:13px; display: none; }
 .touch-controls { position:absolute; bottom:12px; left:12px; z-index:7; display:none; gap:8px; }
 .touch-controls button { opacity:.9; font-weight:700; padding:12px; border-radius:8px; }
 @media (pointer: coarse) { .touch-controls{ display:flex; } }
@@ -25,10 +27,13 @@ button { margin-top:10px; padding:8px 12px; border-radius:6px; border:0; backgro
   <canvas id="game"></canvas>
   <div class="hud">
     <div class="line" id="levelTxt">Nível: 1 / 10</div>
+    <div class="line" id="timerTxt">Tempo: 00:00</div>
   </div>
+  
   <div class="controls">
     WASD / ←→ — mover · Espaço / W — pular · R — reiniciar · Esc — pausar
   </div>
+  
   <div class="touch-controls">
     <button id="leftBtn">◀</button>
     <button id="jumpBtn">▲</button>
@@ -60,6 +65,9 @@ canvas.width = GAME_W;
 canvas.height = GAME_H;
 let keys = {}, game;
 let paused = false;
+
+let gameStartTime;
+let currentTimerInterval;
 
 window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
@@ -134,6 +142,20 @@ function generateLongLevels(difficulty) {
 let LEVELS = [];
 let particles = [];
 
+function formatTime(ms) {
+    if (ms === null || isNaN(ms)) return "N/A";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function updateTimerDisplay() {
+    if (paused || !game || !game.running) return;
+    const elapsedMs = Date.now() - gameStartTime;
+    document.getElementById("timerTxt").textContent = `Tempo: ${formatTime(elapsedMs)}`;
+}
+
 class Particle {
   constructor(x, y, color) {
     this.x = x; this.y = y; this.color = color;
@@ -169,6 +191,7 @@ class Game {
   constructor() {
     this.levelIndex=1; this.maxLevels=10; this.running=false; this.playerDead = false;
     this.clouds = []; this.initClouds();
+    this.difficulty = null; 
   }
   initClouds() {
       for (let i = 0; i < 5; i++) {
@@ -179,6 +202,12 @@ class Game {
     this.level = new Level(this.levelIndex);
     this.player = new Player(50,this.level.groundY-80);
     this.running=true; this.playerDead = false; particles = [];
+    
+    gameStartTime = Date.now();
+    clearInterval(currentTimerInterval); 
+    currentTimerInterval = setInterval(updateTimerDisplay, 100);
+    document.getElementById("timerTxt").textContent = "Tempo: 00:00";
+    
     this.loop();
   }
   restartLevel() {
@@ -190,10 +219,6 @@ class Game {
   nextLevel() {
     this.levelIndex++;
     if(this.levelIndex > this.maxLevels){
-      showCenterMsg("🎉 Parabéns! Você completou todas as fases!", [ 
-          { text: "Jogar Novamente", callback: () => location.reload() },
-          { text: "Tela Inicial", callback: () => location.reload() } // Adicionado
-      ]);
       return;
     }
     this.level = new Level(this.levelIndex);
@@ -225,34 +250,45 @@ class Game {
         }
         if(particles.length === 0) {
             this.running = false;
-            
-            // =========================================================================
-            // MODIFICAÇÃO AQUI (Pegadinha)
-            // =========================================================================
-            // Verifica se a morte foi no último nível (a pegadinha)
+            clearInterval(currentTimerInterval); 
+            const finalTime = Date.now() - gameStartTime; 
+
             if (this.levelIndex === this.maxLevels) {
-                // Mostra a mensagem de vitória em vez de morte
-                showCenterMsg("🎉 Parabéns! Você completou todas as fases!", [
+                const storageKey = `POP_BEST_TIME_${this.difficulty.toUpperCase()}`;
+                const bestTime = localStorage.getItem(storageKey);
+                let newBest = false;
+                
+                if (!bestTime || finalTime < parseInt(bestTime)) {
+                    localStorage.setItem(storageKey, finalTime);
+                    newBest = true;
+                }
+                
+                const finalTimeStr = formatTime(finalTime);
+                const bestTimeStr = formatTime(newBest ? finalTime : parseInt(bestTime));
+
+                let winMessage = `🎉 Parabéns! Você completou!<br>Tempo: ${finalTimeStr}`;
+                if (newBest) {
+                    winMessage += ` (Novo Recorde!)`;
+                } else {
+                    winMessage += `<br>(Recorde: ${bestTimeStr})`;
+                }
+
+                showCenterMsg(winMessage, [
                     { text: "Jogar Novamente", callback: () => location.reload() },
                     { text: "Tela Inicial", callback: () => location.reload() }
                 ]);
             } else {
-                // Mensagem de morte normal
                 showCenterMsg("Você Morreu.", [
                     { text: "Tentar Novamente", callback: () => game.restartLevel() },
                     { text: "Voltar à Tela Inicial", callback: () => location.reload() }
                 ]);
             }
-            // =========================================================================
-            // FIM DA MODIFICAÇÃO
-            // =========================================================================
         }
     }
     this.clouds.forEach(cloud => cloud.update());
     this.camera={x:Math.max(0,this.player.x-150)};
     document.getElementById("levelTxt").textContent = `Nível: ${this.levelIndex} / 10`;
     
-    // Esta condição não será mais atingida no nível 10 por causa da modificação no Player.update
     if(this.level.books.every(b=>b.collected)) {
       this.running = false;
       showCenterMsg("Livro Coletado!", [
@@ -339,23 +375,16 @@ class Player{
       if(this.y+this.height > s.y && this.y < s.y+10 && this.x+this.width > s.x && this.x < s.x+s.w){ this.die(); return; }
     }
     
-    // =========================================================================
-    // MODIFICAÇÃO AQUI (Pegadinha)
-    // =========================================================================
     for(let b of level.books) {
         if(!b.collected && this.x+this.width>b.x && this.x<b.x+20 && this.y+this.height>b.y && this.y<b.y+20) {
-            // Verifica se é o último nível
             if (game.levelIndex === game.maxLevels) {
-                this.die(); // Morre em vez de coletar
-                return; // Para a atualização do jogador
+                this.die(); 
+                return; 
             } else {
-                b.collected = true; // Coleta normal
+                b.collected = true; 
             }
         }
     }
-    // =========================================================================
-    // FIM DA MODIFICAÇÃO
-    // =========================================================================
 
     if(this.y>GAME_H+100) { this.die(); }
   }
@@ -394,12 +423,46 @@ function showCenterMsg(title, buttons) {
   centerMsg.style.display = "flex";
   let buttonsHTML = '';
   buttons.forEach((button, index) => { buttonsHTML += `<button id="msgBtn_${index}">${button.text}</button>`; });
-  centerBox.innerHTML = `<div style="font-size:18px;margin-bottom:12px;">${title}</div><div>${buttonsHTML}</div>`;
+  centerBox.innerHTML = `<div style="font-size:18px;margin-bottom:12px;line-height:1.5;">${title}</div><div>${buttonsHTML}</div>`;
   buttons.forEach((button, index) => {
     document.getElementById(`msgBtn_${index}`).addEventListener("click", () => {
       centerMsg.style.display = "none"; button.callback();
     });
   });
+}
+
+function startGame(difficulty) {
+    LEVELS = generateLongLevels(difficulty);
+    document.getElementById("centerMsg").style.display = "none";
+
+    document.querySelector(".hud").style.display = "block";
+    
+    game = new Game();
+    game.difficulty = difficulty; 
+    game.start();
+}
+
+// MODIFICAÇÃO: Nova função para a tela de controles
+function showControlsScreen(difficulty) {
+    const centerBox = document.getElementById("centerBox");
+    const controlsText = `
+        <div style="font-size:18px;margin-bottom:12px;">Controles</div>
+        <div style="opacity:.85;font-size:14px;line-height:2;max-width:480px;text-align:left; display: inline-block; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 6px;">
+            <strong>WASD / ←→</strong> — Mover<br>
+            <strong>Espaço / W</strong> — Pular<a.br>
+            <strong>R</strong> — Reiniciar<br>
+            <strong>Esc</strong> — Pausar
+        </div>
+        <br>
+        <button id="finalStartBtn" style="margin-top:16px;">Iniciar Jogo</button>
+    `;
+    centerBox.innerHTML = controlsText;
+    
+    setTimeout(() => {
+        document.getElementById("finalStartBtn").addEventListener("click", () => {
+            startGame(difficulty); // Finalmente inicia o jogo
+        });
+    }, 50);
 }
 
 function showDifficultyMenu() {
@@ -416,17 +479,12 @@ function showDifficultyMenu() {
     `;
 
     setTimeout(() => {
+        // MODIFICAÇÃO: Chama a tela de controles em vez de iniciar o jogo
         document.getElementById("easyBtn").addEventListener("click", () => {
-            LEVELS = generateLongLevels('easy');
-            document.getElementById("centerMsg").style.display = "none";
-            game = new Game();
-            game.start();
+            showControlsScreen('easy');
         });
         document.getElementById("hardBtn").addEventListener("click", () => {
-            LEVELS = generateLongLevels('hard');
-            document.getElementById("centerMsg").style.display = "none";
-            game = new Game();
-            game.start();
+            showControlsScreen('hard');
         });
     }, 50);
 }
@@ -446,8 +504,30 @@ Evite armadilhas e colete todos os livros para completar as 10 fases!`;
   },50);
 }
 
+function displayInitialHighScores() {
+    try {
+        const easyTime = localStorage.getItem('POP_BEST_TIME_EASY');
+        const hardTime = localStorage.getItem('POP_BEST_TIME_HARD');
+        
+        const easyStr = formatTime(parseInt(easyTime));
+        const hardStr = formatTime(parseInt(hardTime));
+
+        const scoreDiv = document.createElement('div');
+        scoreDiv.style = "opacity:.7; font-size:12px; margin-top:12px; line-height:1.5;";
+        scoreDiv.innerHTML = `Recorde (Fácil): ${easyStr}<br>Recorde (Difícil): ${hardStr}`;
+        
+        const centerBox = document.getElementById("centerBox");
+        const startBtn = document.getElementById("startBtn");
+        centerBox.insertBefore(scoreDiv, startBtn);
+    } catch (e) {
+        console.error("Não foi possível carregar os recordes:", e);
+    }
+}
+
 const startButton = document.getElementById("startBtn");
 startButton.addEventListener("click", showIntro);
+
+displayInitialHighScores();
 
 </script>
 </body>
