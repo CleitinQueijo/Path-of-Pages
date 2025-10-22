@@ -27,7 +27,7 @@ button { margin-top:10px; padding:8px 12px; border-radius:6px; border:0; backgro
   <canvas id="game"></canvas>
   <div class="hud">
     <div class="line" id="levelTxt">Nível: 1 / 10</div>
-          </div>
+          </div>
   
   <div class="controls">
     WASD / ←→ — mover · Espaço / W — pular · R — reiniciar · Esc — pausar
@@ -152,7 +152,7 @@ function formatTime(ms) {
 function updateTimerDisplay() {
     if (paused || !game || !game.running) return;
     const elapsedMs = Date.now() - gameStartTime;
-    // document.getElementById("timerTxt").textContent = `Tempo: ${formatTime(elapsedMs)}`;
+    // document.getElementById("timerTxt").textContent = `Tempo: ${formatTime(elapsedMs)}`;
 }
 
 class Particle {
@@ -498,6 +498,11 @@ class Player{
     ctx.fillRect(x+5,y,13,4);
     ctx.fillRect(x+5,y+4,2,4); // Parte lateral do cabelo
     ctx.fillRect(x+16,y+4,2,4); // Outra parte lateral do cabelo
+
+    // Olhos simples
+    ctx.fillStyle = "#000000"; // Preto para os olhos
+    ctx.fillRect(x + 8, y + 5, 2, 2); // Olho esquerdo
+    ctx.fillRect(x + 13, y + 5, 2, 2); // Olho direito
 
     // Braços (com animação)
     ctx.fillStyle="#ffdb58"; // Cor da camisa
