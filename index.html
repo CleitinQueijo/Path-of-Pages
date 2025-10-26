@@ -1,665 +1,1094 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title> Path of Pages </title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Path of Pages — Paisagem (Com Tela Inicial & História)</title>
 <style>
-html,body { height:100%; margin:0; background:#111; display:flex; align-items:center; justify-content:center; font-family:Segoe UI, Arial, sans-serif; color:#fff; }
-#game-wrap { width:960px; max-width:96vw; aspect-ratio:16/9; background:#000; position:relative; image-rendering:pixelated; box-shadow:0 10px 30px rgba(0,0,0,.7); }
-canvas { width:100%; height:100%; display:block; image-rendering:pixelated; cursor:none; }
-/* MODIFICAÇÃO: Ocultado HUD por padrão */
-.hud { position:absolute; left:8px; top:8px; z-index:5; font-weight:700; letter-spacing:0.5px; display: none; }
-.hud .line { margin-bottom:6px; padding:6px 10px; background:rgba(0,0,0,0.45); border-radius:6px; display:inline-block; }
-.center-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:6; pointer-events:none; }
-.center-msg .box { pointer-events:auto; padding:18px 22px; background:rgba(0,0,0,0.7); border-radius:8px; text-align:center; }
-button { margin-top:10px; padding:8px 12px; border-radius:6px; border:0; background:#ffcc00; font-weight:700; cursor:pointer; }
-.center-msg .box button { margin: 8px; }
-/* MODIFICAÇÃO: Ocultados os controles permanentemente da tela de jogo */
-.controls { position:absolute; right:8px; top:8px; z-index:5; background:rgba(0,0,0,0.35); padding:8px;border-radius:8px; font-size:13px; display: none; }
-.touch-controls { position:absolute; bottom:12px; left:12px; z-index:7; display:none; gap:8px; }
-.touch-controls button { opacity:.9; font-weight:700; padding:12px; border-radius:8px; }
-@media (pointer: coarse) { .touch-controls{ display:flex; } }
+  :root{
+    --ui-yellow: #ffd54f;
+    --ui-dark: rgba(0,0,0,0.7);
+    --hud-bg: rgba(0,0,0,0.35);
+    --font-main: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --retro-star: #E9F8FF;
+    --bg-top: #07102a;
+    --bg-bottom: #1a2a55;
+    --outline-dark: #1E1E1E; /* contorno personagem */
+    --cap-color: #CC3333;
+    --shirt-color: #FFD633; /* pedido: #FFD633 */
+    --pants-color: #3366CC; /* pedido: #3366CC */
+    --skin-color: #F2C7A1;  /* pedido: #F2C7A1 */
+  }
+  html,body{height:100%;margin:0;background:#0b0b12; font-family:var(--font-main); color:#fff; display:flex; align-items:center; justify-content:center;}
+  #game-wrap {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 16/9; /* paisagem */
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    cursor: none;
+  }
+  .hud{ position:absolute; left:12px; top:12px; z-index:20; display:flex; gap:8px; align-items:center; }
+  .hud .pill{ background:var(--hud-bg); padding:6px 10px; border-radius:999px; font-weight:700; font-size:13px; }
+  .center-msg{ position:absolute; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .center-msg .box{ pointer-events:auto; background:rgba(0,0,0,0.75); padding:18px 22px; border-radius:10px; text-align:center; min-width:340px;}
+  .center-msg h1{ margin:0 0 8px 0; font-size:36px; letter-spacing:1px;}
+  .center-msg p{ margin:0 0 12px 0; opacity:.9; font-size:14px; line-height:1.4; }
+  .center-msg button{ background:var(--ui-yellow); border:0; padding:10px 14px; border-radius:8px; font-weight:800; cursor:pointer; margin:6px; }
+  .controls{ position:absolute; right:8px; top:8px; z-index:9; background:rgba(0,0,0,0.25); padding:8px; border-radius:8px; font-size:13px; display:none; }
+  .touch-controls{ position:absolute; bottom:12px; left:12px; z-index:22; display:none; gap:8px; }
+  .touch-controls button{ opacity:.95; font-weight:700; padding:12px; border-radius:8px; background:var(--hud-bg); color:#fff; border:0; }
+  @media (pointer: coarse){ .touch-controls{ display:flex; } .controls{ display:none; } }
+  .title-big{ font-size:52px; font-weight:900; margin:0; color:#FFF8E7; text-shadow: 0 6px 0 rgba(0,0,0,.35); letter-spacing:2px; line-height:0.9; }
+  .subtitle{ font-size:13px; opacity:.95; margin-top:6px; color:#e9f0ff; }
+  .logo-row{ display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:10px; }
+  .visually-hidden{ position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
+  /* pausa tela */
+  #pauseMenu .box{ min-width:260px; }
+
+
+  /* final screen */
+  #finalScreen {
+    position:absolute; inset:0; z-index:60; display:none;
+    align-items:center; justify-content:center; pointer-events:auto;
+    background: linear-gradient(180deg, rgba(2,6,12,0.6), rgba(0,0,0,0.85));
+  }
+  #finalScreen .card {
+    background: linear-gradient(180deg,#081322,#06111a);
+    border-radius:14px; padding:28px; text-align:center; color:#fff; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    max-width:760px;
+  }
+  #finalScreen h1 { margin:0; font-size:46px; color:#ffd54f; text-shadow:0 10px 40px rgba(255,213,79,0.12); }
+  #finalScreen p { margin-top:12px; color:#dfe9ff; font-size:18px; line-height:1.5; }
+  #finalScreen button { margin-top:18px; padding:10px 16px; border-radius:10px; border:0; background:#ffd54f; font-weight:800; cursor:pointer; }
+
+  /* Story scene styles */
+  #storyScene { position:absolute; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:40px; background: radial-gradient(circle at 50% 40%, rgba(20,30,60,0.92), #02040a 90%); color:#eaf6ff; }
+  #storyInner { max-width:960px; width:100%; text-align:left; }
+  #storyBox { background: linear-gradient(180deg, rgba(3,6,12,0.55), rgba(2,4,8,0.6)); padding:26px 28px; border-radius:12px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+  #storyText { font-size:18px; line-height:1.6; max-height:58vh; overflow:auto; white-space:pre-wrap; opacity:0; transition:opacity .6s; }
+  #storyControls { display:flex; gap:12px; justify-content:center; margin-top:18px; }
+  #continueStoryBtn{ background:var(--ui-yellow); border:0; padding:10px 16px; border-radius:10px; font-weight:800; cursor:pointer; }
+  #skipStoryBtn{ background:transparent; border:1px solid rgba(255,255,255,0.08); padding:8px 10px; border-radius:8px; color:#eaf6ff; cursor:pointer; }
+
+  /* --- NEW: Intro Screen (antes de história e antes do menu) --- */
+  #introScreen {
+    position:absolute; inset:0; z-index:250; display:flex; align-items:center; justify-content:center; pointer-events:auto;
+    background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    transition: opacity 0.6s ease, transform 0.45s ease;
+    overflow:hidden;
+  }
+  #introScreen.hidden { opacity:0; pointer-events:none; transform: scale(.995); }
+  #introInner { text-align:center; color:#fff; filter: drop-shadow(0 12px 18px rgba(0,0,0,0.6)); }
+  #introTitle { font-size:64px; font-weight:900; margin:0; letter-spacing:3px; color:#FFF6D9; text-shadow: 0 8px 0 rgba(0,0,0,0.45); }
+  #introSubtitle { margin-top:8px; opacity:0.9; color:#dbefff; font-size:14px; }
+  .intro-actions { margin-top:20px; display:flex; gap:12px; justify-content:center; }
+  .btn-primary { background:#FFD633; color:#081028; padding:12px 20px; border-radius:10px; font-weight:900; border:0; cursor:pointer; font-size:15px; }
+  .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.08); padding:10px 14px; border-radius:8px; color:#eaf6ff; cursor:pointer; }
+
+  /* stars */
+  .starfield { position:absolute; inset:0; pointer-events:none; z-index:240; }
+  .star { position:absolute; width:2px; height:2px; background:var(--retro-star); opacity:0.9; border-radius:1px; image-rendering:pixelated; }
+
+  /* small responsive tweaks */
+  @media (max-width:900px){
+    .title-big{ font-size:38px; }
+    #introTitle{ font-size:36px; }
+    #storyText{ font-size:16px; }
+  }
+
 </style>
 </head>
 <body>
-<div id="game-wrap">
-  <canvas id="game"></canvas>
-  <div class="hud">
-    <div class="line" id="levelTxt">Nível: 1 / 10</div>
-          </div>
-  
-  <div class="controls">
-    WASD / ←→ — mover · Espaço / W — pular · R — reiniciar · Esc — pausar
-  </div>
-  
-  <div class="touch-controls">
-    <button id="leftBtn">◀</button>
-    <button id="jumpBtn">▲</button>
-    <button id="rightBtn">▶</button>
-  </div>
+<div id="game-wrap" role="application" aria-label="Jogo Path of Pages - Paisagem">
+  <canvas id="game" width="1280" height="720" aria-hidden="false"></canvas>
 
-  <div class="center-msg" id="centerMsg">
-    <div class="box" id="centerBox">
-      <div style="font-size:20px; margin-bottom:6px"> Path of Pages </div>
-      <div style="opacity:.8; font-size:13px">Pegue todos os livros. Evite espinhos. 10 níveis.</div>
-      <button id="startBtn">Jogar</button>
-    </div>
-  </div>
+  <!-- NEW: Intro Screen (ANTES da história e do menu) -->
+  <div id="introScreen" role="dialog" aria-modal="true" aria-label="Tela inicial do jogo">
+    <div class="starfield" id="starfield"></div>
+    <div id="introInner">
+      <h1 id="introTitle">PATH OF PAGES</h1>
+      <div id="introSubtitle">Uma jornada retro — recupere os livros do mago.</div>
+      <div class="intro-actions">
+        <button class="btn-primary" id="introStartBtn">Iniciar Jogo</button>
+        <button class="btn-ghost" id="introInfoBtn">Sobre</button>
+      </div>
+      <div style="height:10px;"></div>
+    </div>
+  </div>
 
-  <div class="center-msg" id="pauseMenu" style="display:none;">
-    <div class="box" id="pauseBox">
-      <div style="font-size:20px; margin-bottom:12px">Jogo Pausado</div>
-      <button id="continueGameBtn" style="margin-bottom:8px;">Continuar</button>
-      <button id="toStartBtn">Tela Inicial</button>
-    </div>
-  </div>
+  <!-- Story Scene -->
+  <div id="storyScene" aria-hidden="true" style="display:none;">
+    <div id="storyInner">
+      <div id="storyBox">
+        <div id="storyText" aria-live="polite"></div>
+        <div id="storyControls">
+          <button id="continueStoryBtn" style="display:none;">Continuar →</button>
+          <button id="skipStoryBtn">Pular (Esc)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud" id="hud" aria-hidden="true" style="display:none;">
+    <div class="pill" id="levelTxt">Nível: 1 / 10</div>
+    <div class="pill" id="timerTxt">Tempo: 00:00</div>
+  </div>
+
+  <div class="touch-controls" aria-hidden="true">
+    <button id="leftBtn">◀</button>
+    <button id="jumpBtn">▲</button>
+    <button id="rightBtn">▶</button>
+  </div>
+
+  <!-- Center Menu (aparece APÓS a história) -->
+  <div class="center-msg" id="centerMsg" style="display:none;">
+    <div class="box" id="centerBox" tabindex="-1">
+      <div class="logo-row">
+        <canvas id="logoSun" width="48" height="48" style="image-rendering:pixelated;"></canvas>
+      </div>
+      <h1 class="title-big">PATH OF PAGES</h1>
+      <div class="subtitle">UM NOVO DESAFIO EM HORIZONTAL</div>
+      <div style="height:12px;"></div>
+      <button id="startBtn">Jogar</button>
+      <button id="howBtn">Controles</button>
+    </div>
+  </div>
+
+  <div class="center-msg" id="pauseMenu" style="display:none;">
+    <div class="box">
+      <h1>Pausado</h1>
+      <button id="continueGameBtn">Continuar</button>
+      <button id="toStartBtn">Tela Inicial</button>
+    </div>
+  </div>
+
+  <div id="finalScreen" aria-hidden="true">
+    <div class="card" role="dialog" aria-modal="true">
+      <h1>✨ Jornada Completa ✨</h1>
+      <p>Você virou as páginas, saltou sobre armadilhas e provou que cada passo importa.<br><br>
+         Obrigado por jogar <strong>Path of Pages</strong> — que suas próximas histórias sejam ainda maiores.</p>
+      <button id="finalRestartBtn">Voltar ao Início</button>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const GAME_W = 800, GAME_H = 400;
-canvas.width = GAME_W;
-canvas.height = GAME_H;
-let keys = {}, game;
-let paused = false;
+/* === Path of Pages — versão com Tela Inicial (antes da história) e personagem 8-bit melhorado
+   Alterações principais:
+   - adicionado introScreen (antes da tela da história)
+   - fluxo: intro -> história -> menu (Jogar/Controles) -> jogo
+   - personagem pixel art redesenhado com contorno, sombras 1px, separação camisa/calça, linha entre pernas, braços 2px, boné, cores solicitadas
+   - mantive todas as funcionalidades originais (níveis, partículas, pássaros, HUD, etc.)
+*/
 
-let gameStartTime;
-let currentTimerInterval;
+/* -------- Constants & Globals -------- */
+const DPR = Math.max(1, window.devicePixelRatio || 1);
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+const GAME_W = 1280;
+const GAME_H = 720;
+canvas.width  = GAME_W * DPR;
+canvas.height = GAME_H * DPR;
+canvas.style.width  = '100%';
+canvas.style.height = '100%';
+ctx.setTransform(DPR,0,0,DPR,0,0);
 
-const BOOK_HEIGHT_ABOVE_PLATFORM = 20;
+const COLORS = {
+  skyTop: '#07336a',
+  skyBottom: '#7fc7ff',
+  sunCore: '#FFC400',
+  sunAccent: '#FFDD55',
+  cloud: '#E6F3FF',
+  islandTop: '#2B8F38',
+  islandEdge: '#18611B',
+  dirt: '#5A2E12',
+  dirtShade: '#3E1C0B',
+  playerShirt: getComputedStyle(document.documentElement).getPropertyValue('--shirt-color').trim() || '#FFD633',
+  playerPants: getComputedStyle(document.documentElement).getPropertyValue('--pants-color').trim() || '#3366CC',
+  playerSkin: getComputedStyle(document.documentElement).getPropertyValue('--skin-color').trim() || '#F2C7A1',
+  playerOutline: getComputedStyle(document.documentElement).getPropertyValue('--outline-dark').trim() || '#1E1E1E',
+  capColor: getComputedStyle(document.documentElement).getPropertyValue('--cap-color').trim() || '#CC3333',
+  bookCover: '#0088CC',
+  bookSpine: '#006699',
+  spike: '#FF4444',
+  hudBg: 'rgba(0,0,0,0.35)'
+};
 
-function generateLongLevels(difficulty) {
-    const generatedLevels = [];
-    const numLevels = 10;
-    
-    let platformsPerLevel, platformWidth, spikeChance, horizontalGapBetweenPlatforms, verticalChangeRange;
-    const platformHeight = 15;
-    const spikeWidth = 40;
-    const spikeHeight = 10;
+const GRAVITY = 0.9;
+const BASE_PLAYER_SPEED = 4.2;
+const BASE_JUMP_POWER = 18;
+const FRICTION = 0.85;
+const MAX_LEVELS = 10;
+const LEVEL_TIME_LIMIT = 20000; // 20s
 
-    if (difficulty === 'easy') {
-        platformsPerLevel = 20; 
-        platformWidth = 180;    
-        spikeChance = 0.2;      
-        horizontalGapBetweenPlatforms = { base: 60, range: 40 };
-        verticalChangeRange = 60; 
-    } else { // 'hard'
-        platformsPerLevel = 60; 
-        platformWidth = 120;    
-        spikeChance = 1.0;      
-        horizontalGapBetweenPlatforms = { base: 10, range: 50 };
-        verticalChangeRange = 80; 
-    }
+/* -------- Input -------- */
+let keys = {};
+const GAME_KEYS = ['a','d','w',' ','arrowleft','arrowright','arrowup','escape','r'];
 
-    for (let i = 0; i < numLevels; i++) {
-        const level = { platforms: [], spikes: [], books: [], trap: {} };
-        let lastPlatform = { x: 0, y: 350, w: platformWidth, h: platformHeight };
-        level.platforms.push(lastPlatform);
+window.addEventListener('keydown', e => {
+  const key = e.key.toLowerCase();
+  keys[key] = true;
+  if(GAME_KEYS.includes(key)) e.preventDefault();
+  if(key === 'escape') togglePause();
+});
+window.addEventListener('keyup', e => {
+  const key = e.key.toLowerCase();
+  keys[key] = false;
+  if(GAME_KEYS.includes(key)) e.preventDefault();
+});
 
-        for (let j = 1; j < platformsPerLevel; j++) {
-            const currentGap = horizontalGapBetweenPlatforms.base + Math.random() * horizontalGapBetweenPlatforms.range;
-            let newX = lastPlatform.x + lastPlatform.w + currentGap;
-            
-            const verticalChange = (Math.random() - 0.5) * verticalChangeRange;
-            let newY = lastPlatform.y + verticalChange;
-
-            if (newY > 380) newY = 380;
-            if (newY < 150) newY = 150;
-
-            const newPlatform = { x: newX, y: newY, w: platformWidth, h: platformHeight };
-            level.platforms.push(newPlatform);
-
-            const isFinalPlatform = (j === platformsPerLevel - 1);
-
-            if (Math.random() < spikeChance && !isFinalPlatform) { 
-                let spikeXOffset;
-                if (difficulty === 'easy') {
-                    spikeXOffset = (platformWidth / 2) - (spikeWidth / 2);
-                } else {
-                    spikeXOffset = 20 + Math.random() * (platformWidth - spikeWidth - 40);
-                }
-                const newSpike = { x: newPlatform.x + spikeXOffset, y: newPlatform.y - spikeHeight, w: spikeWidth };
-                level.spikes.push(newSpike);
-            }
-            
-            lastPlatform = newPlatform;
-        }
-
-        const finalPlatform = level.platforms[level.platforms.length - 1];
-        level.books.push({ x: finalPlatform.x + (platformWidth/2 - 10), y: finalPlatform.y - BOOK_HEIGHT_ABOVE_PLATFORM });
-        level.trap = { x: finalPlatform.x - 30, y: finalPlatform.y - 15, width: 60, active: true };
-        generatedLevels.push(level);
-    }
-    return generatedLevels;
+/* -------- Utilities -------- */
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function rand(min,max){ return min + Math.random()*(max-min); }
+function formatTime(ms){
+  if(ms==null||isNaN(ms)) return "00:00";
+  const s = Math.ceil(ms/1000);
+  const m = Math.floor(s/60);
+  const sec = s%60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
 }
 
-let LEVELS = [];
+/* -------- Cached draws (island, cloud, sun) -------- */
+const cached = { island:null, smallCloud:null, sun:null };
+
+function createIslandCache(){
+  const w = 300, h = 140;
+  const cn = document.createElement('canvas'); cn.width=w; cn.height=h;
+  const c = cn.getContext('2d');
+  c.fillStyle = COLORS.islandTop; c.fillRect(0,0,w,44);
+  c.fillStyle = COLORS.islandEdge; c.fillRect(0,44,w,8);
+  c.fillStyle = COLORS.dirt;
+  for(let y=0;y<5;y++){
+    const rowH = 20;
+    const wid = Math.round(w - (y*48));
+    c.fillRect((w-wid)/2, 52 + y*rowH, wid, rowH);
+  }
+  c.fillStyle = COLORS.dirtShade; c.globalAlpha = 0.14;
+  c.fillRect(0, 52+5*20-12, w, 20);
+  c.globalAlpha = 1;
+  return cn;
+}
+function createCloudCache(){
+  const w=180,h=70; const cn=document.createElement('canvas'); cn.width=w; cn.height=h;
+  const c=cn.getContext('2d'); c.fillStyle=COLORS.cloud;
+  c.fillRect(12,32,156,20); c.fillRect(28,14,120,36); c.fillRect(48,2,80,46);
+  c.fillStyle='rgba(0,0,0,0.06)'; c.fillRect(28,44,120,6);
+  return cn;
+}
+function createSunCache(){
+  const s=56; const cn=document.createElement('canvas'); cn.width=s; cn.height=s;
+  const c=cn.getContext('2d'); c.fillStyle=COLORS.sunCore; c.fillRect(14,14,28,28);
+  c.fillStyle=COLORS.sunAccent; c.fillRect(16,16,24,24);
+  c.fillStyle=COLORS.sunAccent;
+  c.fillRect(8,24,8,4); c.fillRect(40,24,8,4); c.fillRect(24,8,4,8); c.fillRect(24,44,4,8);
+  c.fillRect(10,10,6,6); c.fillRect(40,10,6,6); c.fillRect(10,40,6,6); c.fillRect(40,40,6,6);
+  return cn;
+}
+cached.island = createIslandCache();
+cached.smallCloud = createCloudCache();
+cached.sun = createSunCache();
+
+/* -------- Particles -------- */
 let particles = [];
-
-function formatTime(ms) {
-    if (ms === null || isNaN(ms)) return "N/A";
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+class Particle{
+  constructor(x,y,color){ this.x=x; this.y=y; this.vx=rand(-2.5,2.5); this.vy=rand(-4,-1); this.size=rand(1.5,3.5); this.life=rand(30,80); this.color=color; }
+  update(){ this.vy += 0.18; this.x += this.vx; this.y += this.vy; this.life--; }
+  draw(ctx){ ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size); }
 }
 
-function updateTimerDisplay() {
-    if (paused || !game || !game.running) return;
-    const elapsedMs = Date.now() - gameStartTime;
-    // document.getElementById("timerTxt").textContent = `Tempo: ${formatTime(elapsedMs)}`;
+/* -------- Clouds (parallax) -------- */
+class Cloud{
+  constructor(x,y,size,speed,layer){ this.x=x; this.y=y; this.size=size; this.speed=speed; this.layer=layer; }
+  update(){ this.x -= this.speed * (this.layer===0 ? 0.5 : 1.0); if(this.x + this.size < -60) { this.x = GAME_W + rand(40, GAME_W); this.y = rand(30, GAME_H*0.4); this.size = rand(100, 220); this.speed = rand(0.25, 1.1); } }
+  draw(ctx){
+    const s = this.size / 180;
+    ctx.save(); ctx.translate(this.x, this.y); ctx.scale(s,s); ctx.drawImage(cached.smallCloud, 0, 0); ctx.restore();
+  }
 }
 
-class Particle {
-  constructor(x, y, color) {
-    this.x = x; this.y = y; this.color = color;
-    this.vx = (Math.random() - 0.5) * 5;
-    this.vy = (Math.random() - 1) * 5;
-    this.size = Math.random() * 5 + 2;
-    this.life = 60;
-  }
-  update() { this.x += this.vx; this.y += this.vy; this.vy += 0.2; this.life--; }
-  draw(ctx) { ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size); }
+/* -------- Spike types -------- */
+const SPIKE_TYPES = [
+  { id: 'small',  w: 28, tipOffset: 0.2, visual: 'single', damage: 0.9 },
+  { id: 'medium', w: 36, tipOffset: 0.2, visual: 'single', damage: 1.0 },
+  { id: 'large',  w: 48, tipOffset: 0.22, visual: 'double', damage: 1.2 }
+];
+
+/* -------- Level generation -------- */
+function generateLevels(){
+  const levels = [];
+  for(let L=0; L<MAX_LEVELS; L++){
+    const level = { islands: [], spikes: [], books: [], trap: {}, speedFactor: 1.0 };
+    level.speedFactor = parseFloat(rand(0.88, 1.18).toFixed(3));
+    const islandsCount = 12;
+    let x = 40;
+    let lastGapGlobal = 110;
+    for(let j=0;j<islandsCount;j++){
+      const w = rand(140, 300);
+      let y;
+      if (j === 0) y = rand(GAME_H * 0.45, GAME_H * 0.6);
+      else { const lastY = level.islands[j - 1].y; const deltaY = rand(-100, 100); y = clamp(lastY + deltaY, 180, GAME_H - 180); }
+      let gap;
+      if (j === 0) gap = rand(80, 140);
+      else {
+        const lastGap = level.islands[j - 1]._gap || lastGapGlobal;
+        const trend = rand(-20, 20);
+        const baseGap = clamp(lastGap + trend, 90, 160);
+        const sizeFactor = clamp(1 - (w / 400), 0.7, 1.0);
+        const diffFactor = 1.1;
+        gap = clamp(baseGap * sizeFactor * diffFactor, 80, 170);
+        if (lastGap > 150 && gap > 140) gap = rand(80, 120);
+      }
+      const island = { x: x, y: Math.min(Math.max(y, 110), GAME_H-120), w: w, h: 120, _gap: gap };
+      level.islands.push(island);
+      const allowSpike = island.w >= 180;
+      if (allowSpike && Math.random() < 0.55 && j !== islandsCount-1){
+        const chosen = SPIKE_TYPES[Math.floor(Math.random() * SPIKE_TYPES.length)];
+        const minX = island.x + 12;
+        const maxX = island.x + island.w - chosen.w - 12;
+        let spikeX = rand(minX, Math.max(minX, maxX));
+        spikeX = clamp(spikeX, minX, maxX);
+        const spikeY = island.y;
+        level.spikes.push({ x: spikeX, y: spikeY, w: chosen.w, h: Math.round(chosen.w * 0.6), type: chosen.id, visual: chosen.visual, damage: chosen.damage });
+      }
+      x += w + gap;
+    }
+    const last = level.islands[level.islands.length-1];
+    level.books.push({ x: last.x + last.w/2 - 10, y: last.y - 44 });
+    level.trap = { x: last.x - 40, y: last.y - 10, width: 80, active: true };
+    levels.push(level);
+  }
+  return levels;
 }
 
-class Cloud {
-    constructor(x, y, size, speed) { this.x = x; this.y = y; this.size = size; this.speed = speed; }
-    update() {
-        this.x -= this.speed;
-        if (this.x + this.size < 0) {
-            this.x = GAME_W + Math.random() * GAME_W;
-            this.y = Math.random() * (GAME_H / 2);
-            this.speed = 0.2 + Math.random() * 0.5;
-            this.size = Math.random() * 10 + 20;
-        }
-    }
-    draw(ctx) {
-        // Detalhes pixelados para a nuvem
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(this.x, this.y + this.size * 0.6, this.size, this.size * 0.4);
-        ctx.fillRect(this.x + this.size * 0.1, this.y + this.size * 0.3, this.size * 0.8, this.size * 0.6);
-        ctx.fillRect(this.x + this.size * 0.2, this.y + this.size * 0.1, this.size * 0.6, this.size * 0.7);
-        ctx.fillRect(this.x + this.size * 0.3, this.y, this.size * 0.4, this.size * 0.5);
-        // Sombras sutis para dar mais profundidade
-        ctx.fillStyle = "rgba(0,0,0,0.1)";
-        ctx.fillRect(this.x + this.size * 0.1, this.y + this.size * 0.7, this.size * 0.6, 2);
-        ctx.fillRect(this.x + this.size * 0.5, this.y + this.size * 0.4, this.size * 0.3, 2);
-    }
+/* -------- Entities -------- */
+class Island{
+  constructor(data){ this.x=data.x; this.y=data.y; this.w=data.w; this.h=data.h; }
+  draw(ctx){
+    const scale = this.w / cached.island.width;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(scale, scale);
+    ctx.drawImage(cached.island, 0, 0);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(this.x + this.w/2, this.y + this.h + 8, this.w*0.28, 10, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
 }
 
-class Game {
-  constructor() {
-    this.levelIndex=1; this.maxLevels=10; this.running=false; this.playerDead = false;
-    this.clouds = []; this.initClouds();
-    this.difficulty = null; 
-  }
-  initClouds() {
-      for (let i = 0; i < 5; i++) {
-          this.clouds.push(new Cloud(Math.random() * GAME_W * 2, Math.random() * (GAME_H / 2), Math.random() * 10 + 20, 0.2 + Math.random() * 0.5));
-      }
-  }
-  start() {
-    this.level = new Level(this.levelIndex);
-    this.player = new Player(50,this.level.groundY-80);
-    this.running=true; this.playerDead = false; particles = [];
-    
-    gameStartTime = Date.now();
-    clearInterval(currentTimerInterval); 
-    currentTimerInterval = setInterval(updateTimerDisplay, 100);
-    // document.getElementById("timerTxt").textContent = "Tempo: 00:00";
-    
-    this.loop();
-  }
-  restartLevel() {
-    this.level = new Level(this.levelIndex);
-    this.player = new Player(50, this.level.groundY - 80);
-    this.running = true; this.playerDead = false; particles = [];
-    this.loop();
-  }
-  nextLevel() {
-    this.levelIndex++;
-    if(this.levelIndex > this.maxLevels){
-      return;
-    }
-    this.level = new Level(this.levelIndex);
-    this.player = new Player(50,this.level.groundY-80);
-    this.playerDead = false; particles = [];
-  }
-  loop() {
-    if(!this.running && particles.length === 0) return;
-    if(!paused) { this.update(); this.draw(); }
-    requestAnimationFrame(()=>this.loop());
-  }
-  update() {
-    if(keys["r"]){
-        if(this.playerDead) { game.restartLevel(); } 
-        else if (!paused) { 
-            paused = true;
-            showCenterMsg("Reiniciar Nível?", [
-                { text: "Sim", callback: () => { paused = false; game.restartLevel(); }},
-                { text: "Não", callback: () => { paused = false; }}
-            ]);
-        }
-        keys["r"] = false;
-    }
-    if(!this.playerDead) { this.player.update(this.level); } 
-    else {
-        for(let i = particles.length - 1; i >= 0; i--) {
-            particles[i].update();
-            if(particles[i].life <= 0) particles.splice(i, 1);
-        }
-        if(particles.length === 0) {
-            this.running = false;
-            clearInterval(currentTimerInterval); 
-            const finalTime = Date.now() - gameStartTime; 
-
-            if (this.levelIndex === this.maxLevels) {
-                // REMOÇÃO DA LÓGICA DE RECORDE
-                const finalTimeStr = formatTime(finalTime);
-                let winMessage = `🎉 Parabéns! Você completou!<br>Tempo: ${finalTimeStr}`;
-                // FIM DA REMOÇÃO
-
-                showCenterMsg(winMessage, [
-                    { text: "Jogar Novamente", callback: () => location.reload() },
-                    { text: "Tela Inicial", callback: () => location.reload() }
-                ]);
-            } else {
-                showCenterMsg("Você Morreu.", [
-                    { text: "Tentar Novamente", callback: () => game.restartLevel() },
-                    { text: "Voltar à Tela Inicial", callback: () => location.reload() }
-                ]);
-            }
-        }
-    }
-    this.clouds.forEach(cloud => cloud.update());
-    this.camera={x:Math.max(0,this.player.x-150)};
-    document.getElementById("levelTxt").textContent = `Nível: ${this.levelIndex} / 10`;
-    
-    if(this.level.books.every(b=>b.collected)) {
-      this.running = false;
-      showCenterMsg("Livro Coletado!", [
-        { text: "Continuar", callback: () => {
-          this.nextLevel();
-          if (this.levelIndex <= this.maxLevels) { this.running = true; this.loop(); }
-        }}
-      ]);
-    }
-  }
-  drawSun(ctx) {
-      const sunX = GAME_W - 100, sunY = 70, sunSize = 50;
-      // Cor principal do sol
-      ctx.fillStyle = "#FFFF00"; // Amarelo brilhante
-      ctx.fillRect(sunX, sunY, sunSize, sunSize);
-
-      // Efeitos de brilho e textura pixelada
-      ctx.fillStyle = "#FFD700"; // Amarelo mais escuro
-      ctx.fillRect(sunX + 5, sunY + 5, sunSize - 10, sunSize - 10);
-      ctx.fillRect(sunX + 10, sunY + 10, sunSize - 20, sunSize - 20);
-
-      ctx.fillStyle = "#FFC400"; // Laranja amarelado
-      ctx.fillRect(sunX, sunY + sunSize / 2 - 2, sunSize, 4); // Linha horizontal
-      ctx.fillRect(sunX + sunSize / 2 - 2, sunY, 4, sunSize); // Linha vertical
-
-      // Raios pixelados
-      ctx.fillStyle = "#FFCC00";
-      // Raios principais
-      ctx.fillRect(sunX - 10, sunY + sunSize / 2 - 2, 8, 4);
-      ctx.fillRect(sunX + sunSize + 2, sunY + sunSize / 2 - 2, 8, 4);
-      ctx.fillRect(sunX + sunSize / 2 - 2, sunY - 10, 4, 8);
-      ctx.fillRect(sunX + sunSize / 2 - 2, sunY + sunSize + 2, 4, 8);
-      // Raios diagonais
-      ctx.fillRect(sunX - 5, sunY - 5, 4, 4);
-      ctx.fillRect(sunX + sunSize + 1, sunY - 5, 4, 4);
-      ctx.fillRect(sunX - 5, sunY + sunSize + 1, 4, 4);
-      ctx.fillRect(sunX + sunSize + 1, sunY + sunSize + 1, 4, 4);
-  }
-  draw() {
-    ctx.clearRect(0,0,GAME_W,GAME_H);
-    ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, GAME_W, GAME_H); 
-    this.drawSun(ctx);
-    this.clouds.forEach(cloud => cloud.draw(ctx));
-    ctx.save();
-    ctx.translate(-this.camera.x, 0);
-    for(let p of this.level.platforms)p.draw(ctx);
-    for(let s of this.level.spikes)s.draw(ctx);
-    for(let b of this.level.books)b.draw(ctx);
-    if(!this.playerDead) { this.player.draw(ctx); }
-    for(let p of particles) { p.draw(ctx); }
-    ctx.restore();
-  }
-}
-
-class Level {
-  constructor(index){
-    this.index=index; const data=LEVELS[index-1];
-    this.platforms=data.platforms.map(p=>new Platform(p.x,p.y,p.w,p.h));
-    this.spikes=data.spikes.map(s=>new Spike(s.x,s.y,s.w));
-    this.books=data.books.map(b=>new Book(b.x,b.y));
-    this.trap={...data.trap}; this.groundY=400-50;
-  }
-}
-
-class Platform{
-  constructor(x,y,w,h){this.x=x;this.y=y;this.w=w;this.h=h;}
-  draw(ctx){
-    // Cor da terra
-    ctx.fillStyle="#654321";
-    ctx.fillRect(this.x,this.y,this.w,this.h);
-
-    // Grama pixelada no topo
-    ctx.fillStyle="#008000"; // Verde escuro
-    ctx.fillRect(this.x,this.y,this.w,4); // Camada de grama
-
-    // Detalhes de grama
-    for(let i=0; i < this.w; i+=4) {
-      if(Math.random() > 0.5) { // Aleatoriedade para o padrão
-        ctx.fillRect(this.x + i, this.y - 2, 2, 2); // Pontos de grama
-      }
-    }
-    // Detalhes de terra
-    ctx.fillStyle="#8B4513"; // Marrom mais claro
-    ctx.fillRect(this.x,this.y + this.h - 2,this.w,2); // Base
-    ctx.fillRect(this.x + this.w - 2, this.y + 4, 2, this.h - 8); // Lateral direita
-    ctx.fillStyle="#A0522D"; // Marrom médio
-    ctx.fillRect(this.x + 2, this.y + this.h - 4, this.w - 4, 2); // Sombra inferior
-  }
-}
-
-class Spike{
-    constructor(x,y,w){this.x=x;this.y=y;this.w=w;}
-    draw(ctx){
-      const x=this.x, y=this.y;
-      ctx.fillStyle="#ff3333"; ctx.beginPath();
-      ctx.moveTo(x,y+10); ctx.lineTo(x+this.w/2,y); ctx.lineTo(x+this.w,y+10);
-      ctx.closePath(); ctx.fill();
-      // Adicionar mais detalhes pixelados aos espinhos
-      ctx.fillStyle = "#CC0000"; // Um vermelho mais escuro para a sombra
-      ctx.beginPath();
-      ctx.moveTo(x + this.w/4, y + 5);
-      ctx.lineTo(x + this.w/2, y + 1);
-      ctx.lineTo(x + 3*this.w/4, y + 5);
-      ctx.fill();
-    } 
-}
-
-class Player{
-  constructor(x,y){
-    this.x=x;this.y=y;this.vx=0;this.vy=0;
-    this.width=25;this.height=40;
-    this.onGround=false;
-    this.facingRight = true; 
-    this.frame = 0; // Adicionado para animação
-    this.frameTick = 0; // Adicionado para controle da velocidade da animação
-  }
-  die() {
-    if (game.playerDead) return;
-    game.playerDead = true;
-    const colors = ["#ff3333", "#CC0000", "#AA0000", "#880000"]; // Tons de vermelho para sangue
-    for (let i = 0; i < 80; i++) { // Aumentado para 80 partículas
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const particle = new Particle(
-            this.x + this.width / 2 + (Math.random() - 0.5) * 10, // Pequena variação na origem
-            this.y + this.height / 2 + (Math.random() - 0.5) * 10, // Pequena variação na origem
-            color
-        );
-        particle.vx = (Math.random() - 0.5) * 8; // Velocidade horizontal maior
-        particle.vy = (Math.random() - 1) * 8; // Velocidade vertical maior
-        particle.size = Math.random() * 4 + 1; // Tamanho das partículas um pouco menor e mais variado
-        particles.push(particle);
-    }
-  }
-  update(level){
-    this.vy+=0.8; this.x+=this.vx; this.y+=this.vy; this.vx*=0.85;
-    if(keys["a"] || keys["arrowleft"]) { this.vx=-3; this.facingRight = false; }
-    if(keys["d"] || keys["arrowright"]) { this.vx=3; this.facingRight = true; }
-    if((keys["w"]||keys[" "] || keys["arrowup"])&&this.onGround){this.vy=-17; this.onGround=false;}
-    this.onGround=false;
-    for(let p of level.platforms){
-      if(this.vy>=0 && this.x+this.width>p.x && this.x<p.x+p.w && this.y+this.height>p.y && this.y+this.height-this.vy<=p.y){
-        this.y=p.y-this.height; this.vy=0; this.onGround=true;
-      }
-    }
-    if(level.trap.active && this.x+this.width>level.trap.x && this.x<level.trap.x+level.trap.width && this.y+this.height>=level.trap.y){
-      level.trap.active=false; this.vy=10;
-    }
-    for(let s of level.spikes){
-      const px=this.x+this.width/2, py=this.y+this.height;
-      if(px>s.x && px<s.x+s.w && py>s.y && py<s.y+10){ this.die(); return; }
-      if(this.y+this.height > s.y && this.y < s.y+10 && this.x+this.width > s.x && this.x < s.x+s.w){ this.die(); return; }
-    }
-    
-    for(let b of level.books) {
-        if(!b.collected && this.x+this.width>b.x && this.x<b.x+20 && this.y+this.height>b.y && this.y<b.y+20) {
-            if (game.levelIndex === game.maxLevels) {
-                this.die(); 
-                return; 
-            } else {
-                b.collected = true; 
-            }
-        }
-    }
-
-    if(this.y>GAME_H+100) { this.die(); }
-
-    // Lógica de animação
-    if (this.onGround && (keys["a"] || keys["d"] || keys["arrowleft"] || keys["arrowright"])) {
-        this.frameTick++;
-        if (this.frameTick > 8) { // Velocidade da animação de andar
-            this.frame = (this.frame + 1) % 2; // 2 frames para andar (0 e 1)
-            this.frameTick = 0;
-        }
-    } else {
-        this.frame = 0; // Padrão ou pulo/queda
-        this.frameTick = 0;
-    }
-  }
-  draw(ctx){
-    const x=this.x,y=this.y;
-    ctx.save();
-
-    // CORREÇÃO: Lógica de inverter o personagem
-    if (!this.facingRight) {
-        ctx.translate(x + this.width / 2, y);
-        ctx.scale(-1, 1);
-        ctx.translate(-(x + this.width / 2), -y); // Ajustar de volta para o canto superior esquerdo após o flip
-    }
-    
-    // Definir offsets para animação
-    let armOffsetY = 0;
-    let armSwingX = 0;
-    let legSwing = 0;
-
-    if (!this.onGround) { // Animação de pulo
-        armOffsetY = -2; // Braços para cima
-    } else if (this.vx !== 0) { // Animação de andar
-        if (this.frame === 0) {
-            armSwingX = -2; // Braço esquerdo para trás, direito para frente
-            legSwing = 2; // Perna esquerda para frente, direita para trás
-        } else {
-            armSwingX = 2; // Braço esquerdo para frente, direito para trás
-            legSwing = -2; // Perna esquerda para trás, direita para frente
-        }
-    }
-
-    // Corpo (camisa)
-    ctx.fillStyle="#ffdb58"; // Amarelo
-    ctx.fillRect(x+4,y+10,15,18); 
-
-    // Cabeça
-    ctx.fillStyle="#f2d2b6"; // Cor da pele
-    ctx.fillRect(x+6,y,11,12); // Posição e tamanho da cabeça
-    // Cabelo
-    ctx.fillStyle="#333"; // Cor do cabelo
-    ctx.fillRect(x+5,y,13,4);
-    ctx.fillRect(x+5,y+4,2,4); // Parte lateral do cabelo
-    ctx.fillRect(x+16,y+4,2,4); // Outra parte lateral do cabelo
-
-    // Olhos simples
-    ctx.fillStyle = "#000000"; // Preto para os olhos
-    ctx.fillRect(x + 8, y + 5, 2, 2); // Olho esquerdo
-    ctx.fillRect(x + 13, y + 5, 2, 2); // Olho direito
-
-    // Braços (com animação)
-    ctx.fillStyle="#ffdb58"; // Cor da camisa
-    ctx.fillRect(x + 19 + armSwingX, y + 12 + armOffsetY, 3, 10); // Braço direito
-    ctx.fillRect(x + 1 - armSwingX, y + 12 + armOffsetY, 3, 10); // Braço esquerdo
-
-    // Mãos
-    ctx.fillStyle="#f2d2b6"; // Cor da pele
-    ctx.fillRect(x + 22 + armSwingX, y + 20 + armOffsetY, 3, 4); // Mão direita
-    ctx.fillRect(x - 2 - armSwingX, y + 20 + armOffsetY, 3, 4); // Mão esquerda
-
-
-    // Calças
-    ctx.fillStyle="#336699"; // Azul escuro
-    ctx.fillRect(x+4,y+28,15,8);
-
-    // Pernas (com animação)
-    ctx.fillStyle="#333"; // Cor dos sapatos
-    ctx.fillRect(x+5 + legSwing,y+36,5,4); // Perna esquerda (sapato)
-    ctx.fillRect(x+13 - legSwing,y+36,5,4); // Perna direita (sapato)
-
-    ctx.restore();
-  }
+class Spike {
+  constructor(x, y, w) { this.x = x; this.y = y; this.w = w; this.h = w * 0.6; }
+  draw(ctx) {
+    const { x, y, w, h } = this;
+    const grad = ctx.createLinearGradient(x, y - h, x, y);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, COLORS.spike);
+    grad.addColorStop(1, '#700000');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w / 2, y - h);
+    ctx.lineTo(x + w, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.fillRect(x, y - 2, w, 4);
+  }
+  getCollisionBox(){ return { x: this.x, y: this.y - this.h, w: this.w, h: this.h + 6 }; }
 }
 
 class Book{
-  constructor(x,y){this.x=x;this.y=y;this.collected=false;}
-  draw(ctx){
-    if(!this.collected){
-      // Capa do livro
-      ctx.fillStyle="#0088CC"; // Azul vibrante
-      ctx.fillRect(this.x,this.y,16,20);
-      // Lombada
-      ctx.fillStyle="#006699"; // Azul mais escuro
-      ctx.fillRect(this.x,this.y,2,20);
-      // Páginas
-      ctx.fillStyle="#EEEEEE"; // Branco para as páginas
-      ctx.fillRect(this.x+2,this.y+2,14,16);
-      // Detalhe da capa (fecho ou símbolo)
-      ctx.fillStyle="#FFD700"; // Dourado
-      ctx.fillRect(this.x+5,this.y+5,6,2);
-      ctx.fillRect(this.x+5,this.y+13,6,2);
-    }
-  }
+  constructor(x,y){ this.x = x; this.y = y; this.collected=false; this.offset = rand(0,Math.PI*2); }
+  update(){ this.yOffset = Math.sin((Date.now()/1000) + this.offset) * 6; }
+  draw(ctx){
+    if(this.collected) return;
+    const x=this.x, y=this.y + (this.yOffset || 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x+2,y+18,18,4);
+    ctx.fillStyle = COLORS.bookCover; ctx.fillRect(x, y, 20, 24);
+    ctx.fillStyle = COLORS.bookSpine; ctx.fillRect(x, y, 4, 24);
+    ctx.fillStyle = '#F6F6F6'; ctx.fillRect(x+4, y+3, 14, 18);
+    ctx.fillStyle = '#FFD700'; ctx.fillRect(x+6, y+6, 8, 2); ctx.fillRect(x+6, y+14, 8, 2);
+  }
 }
 
-const leftBtn = document.getElementById('leftBtn'), rightBtn = document.getElementById('rightBtn'), jumpBtn = document.getElementById('jumpBtn');
-leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['a'] = true; });
-leftBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys['a'] = false; });
-rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys['d'] = true; });
-rightBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys['d'] = false; });
-jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[' '] = true; });
-jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys[' '] = false; });
+/* -------- Player (com flip correto e sprite 8-bit melhorado) -------- */
+class Player{
+  constructor(x,y,speedFactor=1){
+    this.x=x; this.y=y; this.vx=0; this.vy=0; this.w=28; this.h=48;
+    this.onGround=false; this.dead=false; this.facingRight=true;
+    this.frame=0; this.frameTick=0;
+    this.speedFactor = speedFactor;
+    this.baseSpeed = BASE_PLAYER_SPEED * this.speedFactor;
+    this.baseJump  = BASE_JUMP_POWER  * this.speedFactor;
+  }
+  die(){
+    if(game && game.playerDead) return;
+    if(game) game.playerDead = true;
+    for(let i=0;i<40;i++) particles.push(new Particle(this.x + this.w/2 + rand(-8,8), this.y + this.h/2 + rand(-8,8), '#FF5555'));
+  }
+  update(level){
+    if(this.dead) return;
+    // horizontal movement and facing
+    if(keys['a'] || keys['arrowleft']) { this.vx = -this.baseSpeed; this.facingRight=false; }
+    else if(keys['d'] || keys['arrowright']) { this.vx = this.baseSpeed; this.facingRight=true; }
+    else this.vx *= FRICTION;
+    // jump
+    if((keys['w'] || keys[' ' ] || keys['arrowup']) && this.onGround){ this.vy = -this.baseJump; this.onGround=false; spawnFootParticle(this.x + this.w/2, this.y + this.h); }
+    this.vy += GRAVITY;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.onGround = false;
+    for(const p of level.platforms){
+      if(this.vy >= 0 && this.x + this.w > p.x && this.x < p.x + p.w && this.y + this.h > p.y && this.y + this.h - this.vy <= p.y + 8){
+        this.y = p.y - this.h;
+        this.vy = 0;
+        this.onGround = true;
+      }
+    }
+    for(const s of level.spikes){
+      const px = this.x + this.w/2, py = this.y + this.h;
+      const sb = s.getCollisionBox ? s.getCollisionBox() : { x: s.x, y: s.y - (s.h||20), w: s.w, h: (s.h||20)+6 };
+      if(px > sb.x && px < sb.x + sb.w && py > sb.y && py < sb.y + sb.h){
+        this.die();
+        return;
+      }
+    }
+    for(const b of level.books){
+      if(!b.collected && this.x + this.w > b.x && this.x < b.x + 20 && this.y + this.h > b.y && this.y < b.y + 24){
+        if(game.levelIndex === game.maxLevels){
+          b.collected = true;
+        } else {
+          b.collected = true;
+          for(let i=0;i<18;i++) particles.push(new Particle(b.x + 8 + rand(-4,4), b.y + 10 + rand(-6,6), '#FFD54F'));
+        }
+      }
+    }
+    if(this.y > GAME_H + 300) this.die();
+    if(this.onGround && Math.abs(this.vx) > 0.5){
+      this.frameTick++;
+      if(this.frameTick > 8){ this.frame = (this.frame + 1) % 2; this.frameTick = 0; }
+    } else { this.frame = 0; this.frameTick = 0; }
+  }
 
-function togglePause() {
-  if(!game || !game.running) return;
-  paused = !paused;
-  document.getElementById("pauseMenu").style.display = paused ? "flex" : "none";
+  /* NEW: draw pixel-art character (8-bit, minimalista) */
+  draw(ctx){
+    // Draw shadow closer to feet for more realistic look
+    const shadowX = this.x + this.w / 2;
+    const shadowY = this.y + this.h -1; // closer to feet
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(shadowX, shadowY, 12, 5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+
+    // Flip handling: draw sprite with local coords (0..w)
+    if (!this.facingRight) {
+      ctx.translate(this.x, this.y);
+    } else {
+      ctx.translate(this.x + this.w, this.y);
+      ctx.scale(-1, 1);
+    }
+
+    // We'll draw a simple 8-bit sprite using small rectangles (keeps 'pixelated' look)
+    // Coordinates chosen to fit w=28,h=48 proportion and still be clearly 8-bit.
+    // Base positions relative to (0,0)
+
+    // Outline (subtle darker contour)
+    ctx.fillStyle = COLORS.playerOutline;
+    // head outline
+    ctx.fillRect(7-1, -5-1, 16+2, 12+2);
+    // body outline
+    ctx.fillRect(5-1, 10-1, 18+2, 22+2);
+    // legs outline
+    ctx.fillRect(5-1, 32-1, 18+2, 10+2);
+
+    // SKIN (head)
+    ctx.fillStyle = COLORS.playerSkin;
+    ctx.fillRect(7, -5, 16, 12);
+
+    // chin shadow (1px) under face
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(7, 7, 16, 1);
+
+    // eyes (simple)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(11, -1, 2, 2);
+    ctx.fillRect(15, -1, 2, 2);
+
+    // small smile (1-2 px)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(13, 2, 2, 1);
+
+    // CAP (boné redondo com aba)
+    ctx.fillStyle = COLORS.capColor;
+    // cap top
+    ctx.fillRect(6, -9, 18, 4);
+    // cap front (slightly darker)
+    ctx.fillStyle = '#A82A2A';
+    ctx.fillRect(8, -7, 14, 2);
+    // cap brim (1px thicker)
+    ctx.fillStyle = '#8A2222';
+    ctx.fillRect(5, -3, 18, 2);
+
+    // Shirt
+    ctx.fillStyle = COLORS.playerShirt;
+    ctx.fillRect(5, 10, 18, 22);
+
+    // subtle shoulder shadow (1px left/right)
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(5, 10, 18, 1);
+
+    // Arms (short, 2px width) - simple rectangles on sides
+    ctx.fillStyle = COLORS.playerShirt;
+    ctx.fillRect(3, 14, 2, 10); // left arm
+    ctx.fillRect(23, 14, 2, 10); // right arm
+
+    // Arm shadows (1px under)
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(3, 24, 2, 1);
+    ctx.fillRect(23, 24, 2, 1);
+
+    // Shirt-Pants separation (dark line)
+    ctx.fillStyle = '#111';
+    ctx.fillRect(5, 32, 18, 1);
+
+    // Pants
+    ctx.fillStyle = COLORS.playerPants;
+    ctx.fillRect(5, 33, 18, 9);
+
+    // Center line / space between legs (1px black)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(13, 40, 2, 3);
+
+    // Shoe blocks (dark)
+    ctx.fillStyle = '#222';
+    ctx.fillRect(5, 42, 8, 6);
+    ctx.fillRect(15, 42, 8, 6);
+
+    // small shirt detail (pocket or badge) - 1px
+    ctx.fillStyle = '#FFE88A';
+    ctx.fillRect(9, 18, 4, 3);
+
+    ctx.restore();
+  }
 }
-window.addEventListener("keydown", e => { if(e.key === "Escape") togglePause(); });
-document.getElementById("continueGameBtn").addEventListener("click", () => { paused = false; document.getElementById("pauseMenu").style.display = "none"; });
-document.getElementById("toStartBtn").addEventListener("click", () => { location.reload(); });
 
-function showCenterMsg(title, buttons) {
-  const centerMsg = document.getElementById("centerMsg");
-  const centerBox = document.getElementById("centerBox");
-  centerMsg.style.display = "flex";
-  let buttonsHTML = '';
-  buttons.forEach((button, index) => { buttonsHTML += `<button id="msgBtn_${index}">${button.text}</button>`; });
-  centerBox.innerHTML = `<div style="font-size:18px;margin-bottom:12px;line-height:1.5;">${title}</div><div>${buttonsHTML}</div>`;
-  buttons.forEach((button, index) => {
-    document.getElementById(`msgBtn_${index}`).addEventListener("click", () => {
-      centerMsg.style.display = "none"; button.callback();
-    });
-  }); 
+function spawnFootParticle(x,y){
+  for(let i=0;i<3;i++) particles.push(new Particle(x + rand(-6,6), y + 6, 'rgba(200,180,140,0.95)'));
 }
 
-function startGame(difficulty) {
-    LEVELS = generateLongLevels(difficulty);
-    document.getElementById("centerMsg").style.display = "none";
+/* -------- Birds (com orientação correta e sombra próxima) -------- */
+let birds = [];
 
-    document.querySelector(".hud").style.display = "block";
-    
-    game = new Game();
-    game.difficulty = difficulty; 
-    game.start();
+class Bird {
+  constructor(x, y, dir = 'left') {
+    this.x = x;
+    this.y = y;
+    this.w = 44;
+    this.h = 28;
+    this.speed = rand(4.0, 6.0);
+    this.dir = dir; // 'left' or 'right'
+    this.frame = 0;
+    this.tick = 0;
+    this.bobOffset = rand(0, Math.PI * 2);
+  }
+
+  update() {
+    this.x += (this.dir === 'left' ? -this.speed : this.speed);
+    this.tick++;
+    if (this.tick % 10 === 0) this.frame = (this.frame + 1) % 2;
+    // gentle bobbing, but small so collision remains stable
+    this.y += Math.sin((Date.now()/300) + this.bobOffset) * 0.35;
+  }
+
+  draw(ctx) {
+    // sombra
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(this.x + this.w / 2, this.y + this.h - 3, this.w * 0.18, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // corpo com orientação correta
+    ctx.save();
+      if (this.dir === 'right') {
+        ctx.translate(this.x, this.y);
+      } else {
+        ctx.translate(this.x + this.w, this.y);
+        ctx.scale(-1, 1);
+      }
+
+    // corpo
+    ctx.fillStyle = this.frame === 0 ? '#ffe08a' : '#ffd54f';
+    ctx.fillRect(0, 0, this.w * 0.7, this.h * 0.6);
+
+    // cabeça
+    ctx.fillStyle = '#E6B96A';
+    ctx.fillRect(this.w * 0.7 - 8, 2, 8, 8);
+
+    // olho
+    ctx.fillStyle = '#000';
+    ctx.fillRect(this.w * 0.7 - 6, 4, 2, 2);
+
+    // asa animada
+    ctx.fillStyle = '#d49b2a';
+    const wingY = this.frame === 0 ? 4 : 0;
+    ctx.fillRect(8, wingY, 18, 8);
+
+    // bico
+    ctx.fillStyle = '#c77f00';
+    ctx.fillRect(this.w * 0.7, 6, 6, 3);
+
+    ctx.restore();
+  }
+
+  isOffScreen(camX) {
+    return (this.x + this.w < camX - 220 || this.x > camX + GAME_W + 220);
+  }
+
+  getCollisionBox() {
+    // collision relative to current x,y and body size
+    return { x: this.x + (this.w*0.05), y: this.y + (this.h*0.05), w: this.w*0.6, h: this.h*0.6 };
+  }
 }
 
-// MODIFICAÇÃO: Nova função para a tela de controles
-function showControlsScreen(difficulty) {
-    const centerBox = document.getElementById("centerBox");
-    const controlsText = `
-        <div style="font-size:18px;margin-bottom:12px;">Controles</div>
-        <div style="opacity:.85;font-size:14px;line-height:2;max-width:480px;text-align:left; display: inline-block; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 6px;">
-            <strong>WASD / ←→</strong> — Mover<br>
-            <strong>Espaço / W</strong> — Pular<br>
-            <strong>R</strong> — Reiniciar<br>
-            <strong>Esc</strong> — Pausar
-        </div>
-        <br>
-        <button id="finalStartBtn" style="margin-top:16px;">Iniciar Jogo</button>
-    `;
-    centerBox.innerHTML = controlsText;
-    
-    setTimeout(() => {
-        document.getElementById("finalStartBtn").addEventListener("click", () => {
-            startGame(difficulty); // Finalmente inicia o jogo
-        });
-    }, 50);
+function spawnBird(camX) {
+  // bias to spawn from right moving left (more natural obstacle)
+  const dir = Math.random() < 0.7 ? 'left' : 'right';
+  const x = dir === 'left' ? camX + GAME_W + rand(40, 120) : camX - rand(40, 120);
+  const y = rand(140, GAME_H * 0.56);
+  birds.push(new Bird(x, y, dir));
 }
 
-function showDifficultyMenu() {
-    const centerBox = document.getElementById("centerBox");
-    centerBox.innerHTML = `
-        <div style="font-size:18px;margin-bottom:12px;">Escolha a Dificuldade</div>
-        <button id="easyBtn" style="margin: 8px;">Fácil</button>
-        <button id="hardBtn" style="margin: 8px;">Difícil</button>
-        <div style="opacity:.8; font-size:13px; max-width: 400px; margin-top: 15px; text-align: left; line-height: 1.5;">
-            <strong>Fácil:</strong> Níveis mais curtos, plataformas mais largas e menos espinhos.
-            <br><br>
-            <strong>Difícil:</strong> O desafio original. Níveis longos com um espinho por plataforma.
-        </div>
-    `;
-
-    setTimeout(() => {
-        // MODIFICAÇÃO: Chama a tela de controles em vez de iniciar o jogo
-        document.getElementById("easyBtn").addEventListener("click", () => {
-            showControlsScreen('easy');
-        });
-        document.getElementById("hardBtn").addEventListener("click", () => {
-            showControlsScreen('hard');
-        });
-    }, 50);
+/* -------- Level & Game -------- */
+class Level{
+  constructor(index, data){
+    this.index = index;
+    this.platforms = data.islands.map(d => ({ x: d.x, y: d.y, w: d.w, h: d.h }));
+    this.spikes = data.spikes.map(s => new Spike(s.x, s.y, s.w));
+    this.books = data.books.map(b => new Book(b.x, b.y));
+    this.trap = { ...data.trap };
+    this.speedFactor = data.speedFactor || 1.0;
+  }
 }
 
-function showIntro() {
-  const centerBox=document.getElementById("centerBox");
-  const introText=`Você é <strong>Elian</strong>, um aprendiz de bibliotecário que deve recuperar <strong>as páginas mágicas</strong> perdidas.<br><br>
-Evite armadilhas e colete todos os livros para completar as 10 fases!`;
-  centerBox.innerHTML=`<div style="font-size:18px;margin-bottom:12px;">As Páginas Perdidas</div>
-  <div style="opacity:.85;font-size:13px;line-height:1.5;max-width:480px;text-align:left;">${introText}</div>
-  <button id="continueBtn" style="margin-top:16px;">Continuar</button>`;
-  
-  setTimeout(()=>{
-      document.getElementById("continueBtn").addEventListener("click",()=>{
-        showDifficultyMenu();
-      })
-  },50);
+let animationRequestId = null; // to optionally cancel animation frames
+
+class Game{
+  constructor(){
+    this.levelIndex = 1;
+    this.maxLevels = MAX_LEVELS;
+    this.running = false;
+    this.playerDead = false;
+    this.clouds = [];
+    this.initClouds();
+    this.difficulty = 'hard';
+    this.cameraX = 0;
+    this.level = null;
+    this.player = null;
+    this.startTime = 0;
+    this.levelStartTime = 0;
+    this.levelTimeLimit = LEVEL_TIME_LIMIT;
+    this.levelTimer = null;
+    this.elapsedPause = 0;
+    this.pausedAt = null;
+    this.ended = false;
+  }
+  initClouds(){
+    this.clouds = [];
+    for(let i=0;i<6;i++) this.clouds.push(new Cloud(rand(-200, GAME_W*2), rand(20, GAME_H*0.35), rand(100, 260), rand(0.2,1.0), 1));
+    for(let i=0;i<4;i++) this.clouds.push(new Cloud(rand(-200, GAME_W*2), rand(30, GAME_H*0.4), rand(120, 300), rand(0.08,0.5), 0));
+  }
+  start(){
+    this.levelIndex = 1;
+    this.spawnLevel();
+    this.running = true;
+    this.playerDead = false;
+    particles = [];
+    birds = [];
+    this.ended = false;
+    this.startTime = Date.now();
+    currentTimerInterval && clearInterval(currentTimerInterval);
+    currentTimerInterval = setInterval(()=>updateTimerDisplay(), 200);
+    this.loop();
+  }
+  spawnLevel(){
+    clearTimeout(this.levelTimer);
+    this.level = new Level(this.levelIndex, LEVELS[this.levelIndex-1]);
+    const spawnX = this.level.platforms[0].x + 12;
+    const spawnY = this.level.platforms[0].y - 80;
+    this.player = new Player(spawnX, spawnY, this.level.speedFactor);
+    this.playerDead = false;
+    this.islandObjs = this.level.platforms.map(p => new Island(p));
+    this.cameraX = Math.max(0, this.player.x - 140);
+    birds = []; // clear birds at level start for predictability
+    this.levelStartTime = Date.now();
+    this.levelTimer = setTimeout(() => {
+      this.player.die();
+      this.running = false;
+      showCenterMsg('⏰ Tempo esgotado!', [
+        { text:'Tentar Novamente', callback: ()=>{ this.restartLevel(); } },
+        { text:'Tela Inicial', callback: ()=> location.reload() }
+      ]);
+    }, this.levelTimeLimit);
+  }
+  restartLevel(){
+    clearTimeout(this.levelTimer);
+    this.spawnLevel();
+    this.running = true; this.playerDead=false; particles=[];
+    this.loop();
+  }
+  nextLevel(){
+    clearTimeout(this.levelTimer);
+    this.levelIndex++;
+    if(this.levelIndex > this.maxLevels){
+      this.endGame();
+      return;
+    }
+    this.spawnLevel();
+  }
+  endGame(){
+    this.running = false;
+    clearTimeout(this.levelTimer);
+    clearInterval(currentTimerInterval);
+    this.ended = true;
+    // hide game UI elements
+    document.getElementById('centerMsg').style.display = 'none';
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('hud').style.display = 'none';
+    // show final screen
+    const final = document.getElementById('finalScreen');
+    final.style.display = 'flex';
+    final.setAttribute('aria-hidden', 'false');
+  }
+  loop(){
+    if(this.ended) return;
+    if(!this.running && particles.length === 0) return;
+    if(!paused) { this.update(); this.draw(); }
+    animationRequestId = requestAnimationFrame(()=>this.loop());
+  }
+  update(){
+    if(keys['r']){
+      if(this.playerDead) { this.restartLevel(); keys['r']=false; }
+      else if(!paused){ paused=true; showCenterMsg('Reiniciar nível?', [{text:'Sim', callback: ()=>{ paused=false; this.restartLevel(); }},{text:'Não', callback: ()=>{ paused=false; }}]); keys['r']=false; }
+    }
+    if(!this.playerDead) this.player.update(this.level);
+    for(let i=particles.length-1;i>=0;i--){ particles[i].update(); if(particles[i].life<=0) particles.splice(i,1); }
+    this.level.books.forEach(b => b.update && b.update());
+    this.clouds.forEach(c => c.update());
+
+    // Birds: spawn, update, collision, cleanup
+    const birdSpawnProb = 0.004;
+    const birdMax = 3;
+    if (Math.random() < birdSpawnProb && birds.length < birdMax) spawnBird(this.cameraX);
+
+    for (let i = birds.length - 1; i >= 0; i--) {
+      const b = birds[i];
+      b.update();
+      if (!this.playerDead && this.player) {
+        const cb = b.getCollisionBox();
+        if (this.player.x < cb.x + cb.w &&
+            this.player.x + this.player.w > cb.x &&
+            this.player.y < cb.y + cb.h &&
+            this.player.y + this.player.h > cb.y) {
+          this.player.die();
+        }
+      }
+      if (b.isOffScreen(this.cameraX)) birds.splice(i, 1);
+    }
+
+    const levelRight = this.level.platforms[this.level.platforms.length-1].x + 400;
+    const targetCam = clamp(this.player.x - (GAME_W * 0.35), 0, Math.max(levelRight - GAME_W + 200, 0));
+    this.cameraX += (targetCam - this.cameraX) * 0.12;
+    document.getElementById('levelTxt').textContent = `Nível: ${this.levelIndex} / ${this.maxLevels}`;
+
+    const elapsedThisLevel = Date.now() - this.levelStartTime;
+    if(elapsedThisLevel >= this.levelTimeLimit && !this.playerDead){
+      this.player.die();
+    }
+    if(this.level.books.every(b => b.collected)){
+      clearTimeout(this.levelTimer);
+      this.running = false;
+      showCenterMsg('Livro Coletado! Continuar para o próximo nível.', [{ text:'Continuar', callback: ()=>{ this.nextLevel(); this.running = true; this.loop(); }}]);
+    }
+    if(this.playerDead && particles.length === 0){
+      this.running = false;
+      clearTimeout(this.levelTimer);
+      showCenterMsg(this.levelIndex === this.maxLevels ? `Você Morreu no último nível.` : 'Você Morreu.', [
+        { text:'Tentar Novamente', callback: ()=>{ this.restartLevel(); } },
+        { text:'Tela Inicial', callback: ()=> location.reload() }
+      ]);
+    }
+  }
+  drawBackground(){
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+    g.addColorStop(0, COLORS.skyTop);
+    g.addColorStop(1, COLORS.skyBottom);
+    ctx.fillStyle = g; ctx.fillRect(0,0,GAME_W,GAME_H);
+    const sunX = 90, sunY = 80;
+    const t = Date.now()/700;
+    const glow = 0.6 + Math.sin(t)*0.12;
+    ctx.save(); ctx.globalAlpha = 0.14 * glow; ctx.fillStyle = '#FFF6CC';
+    ctx.beginPath(); ctx.ellipse(sunX+28, sunY+28, 120 * glow, 120 * glow, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(sunX, sunY); const scale = 1 + Math.sin(t)/24; ctx.scale(scale,scale); ctx.drawImage(cached.sun, -4, -4); ctx.restore();
+    this.clouds.sort((a,b)=>a.layer-b.layer).forEach(c => {
+      ctx.save();
+      ctx.globalAlpha = c.layer===0 ? 0.45 : 0.95;
+      c.draw(ctx);
+      ctx.restore();
+    });
+    ctx.save(); ctx.globalAlpha = 0.06; ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(-200, GAME_H*0.7);
+    ctx.lineTo(120, GAME_H*0.45);
+    ctx.lineTo(420, GAME_H*0.65);
+    ctx.lineTo(760, GAME_H*0.5);
+    ctx.lineTo(1100, GAME_H*0.65);
+    ctx.lineTo(GAME_W+200, GAME_H*0.5);
+    ctx.lineTo(GAME_W+200, GAME_H+200);
+    ctx.lineTo(-200, GAME_H+200);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  draw(){
+    ctx.clearRect(0,0,GAME_W,GAME_H);
+    this.drawBackground();
+    ctx.save();
+    ctx.translate(-this.cameraX, 0);
+    for(const isl of this.islandObjs) isl.draw(ctx);
+    for(const s of this.level.spikes) s.draw(ctx);
+    // draw birds (behind books for depth)
+    for (const b of birds) b.draw(ctx);
+    for(const b of this.level.books) b.draw(ctx);
+    if(!this.playerDead) this.player.draw(ctx);
+    for(const p of particles) p.draw(ctx);
+    ctx.restore();
+  }
 }
 
-// REMOVIDA A FUNÇÃO displayInitialHighScores()
+/* -------- UI & Game bootstrap -------- */
+let game = null;
+let LEVELS = [];
+let currentTimerInterval = null;
+let paused = false;
+let isPaused = false;
 
-const startButton = document.getElementById("startBtn");
-startButton.addEventListener("click", showIntro);
+function updateTimerDisplay(){
+  if(!game) return;
+  const remaining = Math.max(0, game.levelTimeLimit - (Date.now() - (game.levelStartTime || game.startTime)));
+  document.getElementById('timerTxt').textContent = `Tempo: ${formatTime(remaining)}`;
+}
 
-// REMOVIDA A CHAMADA displayInitialHighScores();
+function showCenterMsg(title, buttons){
+  const centerMsg = document.getElementById('centerMsg');
+  const centerBox = document.getElementById('centerBox');
+  centerBox.innerHTML = `<div style="font-size:16px;margin-bottom:8px;line-height:1.4;color:#fff;">${title}</div><div style="margin-top:6px;"></div>`;
+  buttons.forEach((b,idx)=> {
+    const btn = document.createElement('button');
+    btn.id = `msgBtn_${idx}`;
+    btn.textContent = b.text;
+    btn.addEventListener('click', ()=>{ centerMsg.style.display = 'none'; b.callback && b.callback(); });
+    centerBox.appendChild(btn);
+  });
+  centerMsg.style.display = 'flex';
+}
 
+function togglePause(){
+  if(!game || !game.running) return;
+  paused = !paused;
+  document.getElementById('pauseMenu').style.display = paused ? 'flex' : 'none';
+}
+
+/* -------- Start / Controls UI (Menu original permanece, mas aparece só APÓS a história) -------- */
+const startButton = document.getElementById('startBtn');
+const howButton = document.getElementById('howBtn');
+startButton && startButton.addEventListener('click', ()=> {
+  document.getElementById('centerMsg').style.display = 'none';
+  startGame('hard');
+});
+howButton && howButton.addEventListener('click', ()=> {
+  const box = document.getElementById('centerBox');
+  box.innerHTML = `<div style="font-size:18px;margin-bottom:12px;">Controles</div>
+    <div style="text-align:left; font-size:14px; opacity:.95;">A / ← — esquerda<br>D / → — direita<br>W / Espaço / ↑ — pular<br>R — reiniciar<br>Esc — pausar</div>
+    <div style="height:10px;"></div><button id="finalStartBtn">Iniciar</button>`;
+  setTimeout(()=> {
+    const finalStartBtn = document.getElementById('finalStartBtn');
+    finalStartBtn && finalStartBtn.addEventListener('click', ()=> { document.getElementById('centerMsg').style.display='none'; startGame('hard'); });
+  }, 50);
+});
+
+function startGame(difficulty){
+  document.getElementById('centerMsg').style.display = 'none';
+  LEVELS = generateLevels(difficulty);
+  document.querySelector('.hud').style.display = 'flex';
+  document.getElementById('hud').setAttribute('aria-hidden','false');
+  game = new Game();
+  game.difficulty = difficulty;
+  game.start();
+  currentTimerInterval && clearInterval(currentTimerInterval);
+  currentTimerInterval = setInterval(()=>updateTimerDisplay(), 200);
+}
+
+/* -------- Misc UI listeners -------- */
+document.getElementById('continueGameBtn').addEventListener('click', ()=> { paused=false; document.getElementById('pauseMenu').style.display='none'; });
+document.getElementById('toStartBtn').addEventListener('click', ()=> location.reload());
+document.getElementById('finalRestartBtn').addEventListener('click', ()=> location.reload());
+
+/* -------- Draw small sun logo -------- */
+(function drawLogoSun(){
+  const c = document.getElementById('logoSun');
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0,0,48,48);
+  g.drawImage(cached.sun, 0, 0, 48, 48);
+})();
+
+/* -------- Accessibility: focus -------- */
+/* Não focar menu principal até que ele seja mostrado após a história */
+
+/* === Story Scene logic === */
+const storyScene = document.getElementById('storyScene');
+const storyTextEl = document.getElementById('storyText');
+const continueBtn = document.getElementById('continueStoryBtn');
+const skipBtn = document.getElementById('skipStoryBtn');
+
+const storyText = `Havia um mago chamado Aldren, conhecido em todo o reino por dominar feitiços que até os antigos temiam pronunciar. Seus livros eram sua alma — grimórios cobertos de runas, páginas que respiravam magia e guardavam segredos de séculos.
+
+Mas numa noite tempestuosa, ladrões mascarados invadiram sua torre. Levaram tudo — cada livro, cada pergaminho, até o diário em que Aldren registrava suas falhas. Quando a aurora chegou, o mago estava de joelhos entre as estantes vazias, o coração mais pesado que a própria torre.
+
+Sabendo que não podia deixar seu conhecimento cair em mãos erradas, Aldren convocou um mensageiro — um jovem aprendiz de guerreiro chamado Kael, mais corajoso do que sábio.
+
+“Traga-me meus livros”, disse o mago, entregando-lhe um amuleto que brilhava com uma chama azul. “Ele te guiará... mas também te provará.”
+
+Kael partiu por vales e ruínas, seguindo o amuleto que pulsava a cada passo. Encontrou um dos grimórios em uma caverna guardada por espectros — e, ao abri-lo, ouviu a voz do mago ecoar:
+
+“O conhecimento só pertence a quem o entende, não a quem o rouba.”
+
+Com o tempo, Kael percebeu que cada livro recuperado ensinava algo — sobre coragem, humildade e poder. Quando retornou à torre, trazia todos... menos um.
+
+Aldren o esperava, cansado, mas sorrindo.
+“E o último?”, perguntou.
+
+Kael olhou para o amuleto, que agora não brilhava mais. “Ele ficou comigo, mestre. Acho que o último livro... era eu.”
+
+O mago riu, e pela primeira vez em muitos anos, entendeu que perder os livros fora a melhor das magias — pois o saber que se espalha é o único que nunca se perde.`;
+
+let storyIdx = 0;
+let storyTyping = null;
+let storyInterrupted = false;
+
+function typeStory(){
+  storyTextEl.style.opacity = '1';
+  if(storyIdx < storyText.length && !storyInterrupted){
+    storyTextEl.textContent += storyText[storyIdx++];
+    storyTyping = setTimeout(typeStory, 22);
+  } else {
+    // finished
+    continueBtn.style.display = 'inline-block';
+  }
+}
+
+function showStory(){
+  storyScene.style.display = 'flex';
+  storyScene.setAttribute('aria-hidden', 'false');
+  storyTextEl.textContent = '';
+  storyIdx = 0;
+  storyInterrupted = false;
+  continueBtn.style.display = 'none';
+  // start typing with a short delay so visuals settle
+  setTimeout(typeStory, 360);
+}
+
+function endStory(){
+  // stop typing
+  storyInterrupted = true;
+  clearTimeout(storyTyping);
+  // fade out
+  storyScene.style.transition = 'opacity 0.9s ease';
+  storyScene.style.opacity = '0';
+  setTimeout(()=>{
+    storyScene.style.display = 'none';
+    storyScene.setAttribute('aria-hidden', 'true');
+    storyScene.style.opacity = '1';
+    // show main menu (o menu com "Jogar" / "Controles")
+    const center = document.getElementById('centerMsg');
+    center.style.display = 'flex';
+    document.getElementById('centerBox').focus();
+  }, 920);
+}
+
+continueBtn.addEventListener('click', endStory);
+skipBtn.addEventListener('click', endStory);
+window.addEventListener('keydown', e => {
+  if(e.key === 'Escape' || e.key === 'Esc'){
+    if(storyScene.style.display !== 'none') endStory();
+  }
+});
+
+/* --- NEW: Intro behavior --- */
+const introScreen = document.getElementById('introScreen');
+const introStartBtn = document.getElementById('introStartBtn');
+const introInfoBtn = document.getElementById('introInfoBtn');
+
+function createStars(){
+  const area = document.getElementById('starfield');
+  const count = 80;
+  for(let i=0;i<count;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    const left = Math.floor(Math.random()*100);
+    const top = Math.floor(Math.random()*100);
+    const size = Math.random() < 0.12 ? 3 : (Math.random()<0.25?2:1);
+    s.style.left = left + '%';
+    s.style.top = top + '%';
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.opacity = (0.4 + Math.random()*0.8).toFixed(2);
+    area.appendChild(s);
+  }
+}
+createStars();
+
+introStartBtn.addEventListener('click', ()=> {
+  // Hide intro and start story
+  introScreen.classList.add('hidden');
+  setTimeout(()=> {
+    introScreen.style.display = 'none';
+    // show story after a short pause so fade completes
+    showStory();
+  }, 460);
+});
+
+introInfoBtn.addEventListener('click', ()=> {
+  alert('Path of Pages — Recupere os livros do mago Aldren. Controle: A/D/W ou setas. Boa sorte!');
+});
+
+/* start: show intro on load */
+window.addEventListener('load', ()=>{
+  // Ensure intro visible (was default)
+  document.getElementById('centerMsg').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  // Focus start
+  introStartBtn.focus();
+});
+
+/* === End of script === */
 </script>
 </body>
 </html>
