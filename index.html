@@ -55,7 +55,6 @@
   /* pausa tela */
   #pauseMenu .box{ min-width:260px; }
 
-
   /* final screen */
   #finalScreen {
     position:absolute; inset:0; z-index:60; display:none;
@@ -112,7 +111,7 @@
 <div id="game-wrap" role="application" aria-label="Jogo Path of Pages - Paisagem">
   <canvas id="game" width="1280" height="720" aria-hidden="false"></canvas>
 
-  <!-- NEW: Intro Screen (ANTES da história e do menu) -->
+  <!-- NEW: Intro Screen (ANTES da história e antes do menu) -->
   <div id="introScreen" role="dialog" aria-modal="true" aria-label="Tela inicial do jogo">
     <div class="starfield" id="starfield"></div>
     <div id="introInner">
@@ -188,7 +187,7 @@
    Alterações principais:
    - adicionado introScreen (antes da tela da história)
    - fluxo: intro -> história -> menu (Jogar/Controles) -> jogo
-   - personagem pixel art redesenhado com contorno, sombras 1px, separação camisa/calça, linha entre pernas, braços 2px, boné, cores solicitadas
+   - personagem pixel art redesenhado com contorno, sombras 1px, separação camisa/calça, linha entre pernas, braços 2px, cabelo castanho escuro, cores solicitadas
    - mantive todas as funcionalidades originais (níveis, partículas, pássaros, HUD, etc.)
 */
 
@@ -231,11 +230,11 @@ const BASE_PLAYER_SPEED = 4.2;
 const BASE_JUMP_POWER = 18;
 const FRICTION = 0.85;
 const MAX_LEVELS = 10;
-const LEVEL_TIME_LIMIT = 20000; // 20s
+const LEVEL_TIME_LIMIT = 25000; // 25s
 
 /* -------- Input -------- */
 let keys = {};
-const GAME_KEYS = ['a','d','w',' ','arrowleft','arrowright','arrowup','escape','r'];
+const GAME_KEYS = ['a','d','w',' ',' arrowleft','arrowright','arrowup','escape','r'];
 
 window.addEventListener('keydown', e => {
   const key = e.key.toLowerCase();
@@ -296,6 +295,7 @@ function createSunCache(){
   c.fillRect(10,10,6,6); c.fillRect(40,10,6,6); c.fillRect(10,40,6,6); c.fillRect(40,40,6,6);
   return cn;
 }
+
 cached.island = createIslandCache();
 cached.smallCloud = createCloudCache();
 cached.sun = createSunCache();
@@ -373,6 +373,7 @@ function generateLevels(){
 }
 
 /* -------- Entities -------- */
+
 class Island{
   constructor(data){ this.x=data.x; this.y=data.y; this.w=data.w; this.h=data.h; }
   draw(ctx){
@@ -535,16 +536,10 @@ class Player{
     ctx.fillStyle = '#000';
     ctx.fillRect(13, 2, 2, 1);
 
-    // CAP (boné redondo com aba)
-    ctx.fillStyle = COLORS.capColor;
-    // cap top
-    ctx.fillRect(6, -9, 18, 4);
-    // cap front (slightly darker)
-    ctx.fillStyle = '#A82A2A';
-    ctx.fillRect(8, -7, 14, 2);
-    // cap brim (1px thicker)
-    ctx.fillStyle = '#8A2222';
-    ctx.fillRect(5, -3, 18, 2);
+    // Cabelo (castanho escuro)
+    ctx.fillStyle = '#0b2135'; // Cor castanho escuro
+    ctx.fillRect(6, -9, 18, 4); // Cabelo como uma forma retangular
+    ctx.fillRect(7, -13, 16, 4); // Parte superior do cabelo
 
     // Shirt
     ctx.fillStyle = COLORS.playerShirt;
@@ -717,6 +712,9 @@ class Game{
     for(let i=0;i<4;i++) this.clouds.push(new Cloud(rand(-200, GAME_W*2), rand(30, GAME_H*0.4), rand(120, 300), rand(0.08,0.5), 0));
   }
   start(){
+    // Ensure there's only one animation loop running. If a previous loop exists, cancel it.
+    if(animationRequestId) { cancelAnimationFrame(animationRequestId); animationRequestId = null; }
+
     this.levelIndex = 1;
     this.spawnLevel();
     this.running = true;
@@ -753,6 +751,8 @@ class Game{
     clearTimeout(this.levelTimer);
     this.spawnLevel();
     this.running = true; this.playerDead=false; particles=[];
+    // Cancel previous RAF chain before starting the loop again to avoid multiple loops stacking
+    if(animationRequestId) { cancelAnimationFrame(animationRequestId); animationRequestId = null; }
     this.loop();
   }
   nextLevel(){
@@ -762,6 +762,8 @@ class Game{
       this.endGame();
       return;
     }
+    // Cancel any existing RAF before spawning next level to avoid duplicate loops
+    if(animationRequestId) { cancelAnimationFrame(animationRequestId); animationRequestId = null; }
     this.spawnLevel();
   }
   endGame(){
@@ -769,6 +771,8 @@ class Game{
     clearTimeout(this.levelTimer);
     clearInterval(currentTimerInterval);
     this.ended = true;
+    // ensure animation loop stopped
+    if(animationRequestId) { cancelAnimationFrame(animationRequestId); animationRequestId = null; }
     // hide game UI elements
     document.getElementById('centerMsg').style.display = 'none';
     document.getElementById('game').style.display = 'none';
@@ -826,7 +830,16 @@ class Game{
     if(this.level.books.every(b => b.collected)){
       clearTimeout(this.levelTimer);
       this.running = false;
-      showCenterMsg('Livro Coletado! Continuar para o próximo nível.', [{ text:'Continuar', callback: ()=>{ this.nextLevel(); this.running = true; this.loop(); }}]);
+      paused = true; // Pausa automática ao coletar o livro
+      showCenterMsg('Livro Coletado! Continuar para o próximo nível.', [{ 
+        text:'Continuar', 
+        callback: ()=>{ 
+          paused = false; // Remove a pausa
+          this.nextLevel(); 
+          this.running = true; 
+          this.loop(); 
+        } 
+      }]);
     }
     if(this.playerDead && particles.length === 0){
       this.running = false;
@@ -946,7 +959,10 @@ function startGame(difficulty){
 }
 
 /* -------- Misc UI listeners -------- */
-document.getElementById('continueGameBtn').addEventListener('click', ()=> { paused=false; document.getElementById('pauseMenu').style.display='none'; });
+document.getElementById('continueGameBtn').addEventListener('click', ()=> { 
+  paused = false; 
+  document.getElementById('pauseMenu').style.display='none'; 
+});
 document.getElementById('toStartBtn').addEventListener('click', ()=> location.reload());
 document.getElementById('finalRestartBtn').addEventListener('click', ()=> location.reload());
 
